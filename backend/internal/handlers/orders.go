@@ -6,16 +6,18 @@ import (
 
 	"order-management-system/internal/database"
 	"order-management-system/internal/models"
+	"order-management-system/internal/websocket"
 
 	"github.com/gin-gonic/gin"
 )
 
 type OrderHandler struct {
-	db *database.DB
+	db  *database.DB
+	hub *websocket.Hub
 }
 
-func NewOrderHandler(db *database.DB) *OrderHandler {
-	return &OrderHandler{db: db}
+func NewOrderHandler(db *database.DB, hub *websocket.Hub) *OrderHandler {
+	return &OrderHandler{db: db, hub: hub}
 }
 
 // GET /api/orders - Lista wszystkich zamówień (admin)
@@ -91,4 +93,58 @@ func (h *OrderHandler) CreateOrder(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusCreated, order)
+}
+
+// PATCH /api/orders/:id/status - Zmiana statusu zamówienia
+func (h *OrderHandler) UpdateOrderStatus(c *gin.Context) {
+	idStr := c.Param("id")
+	id, err := strconv.Atoi(idStr)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid order ID"})
+		return
+	}
+
+	var statusUpdate struct {
+		Status string `json:"status"`
+	}
+
+	if err := c.ShouldBindJSON(&statusUpdate); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid JSON data"})
+		return
+	}
+
+	// Walidacja
+	validStatuses := []string{"new", "confirmed", "shipped", "delivered", "cancelled"}
+	isValid := false
+	for _, status := range validStatuses {
+		if statusUpdate.Status == status {
+			isValid = true
+			break
+		}
+	}
+	if !isValid {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid status value"})
+		return
+	}
+
+	// Aktualizacja statusu w bazie
+	_, err = h.db.Exec(`
+        UPDATE orders 
+        SET status = $1, updated_at = CURRENT_TIMESTAMP 
+        WHERE id = $2
+    `, statusUpdate.Status, id)
+
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update order status"})
+		return
+	}
+
+	// Powiadomienie przez WebSocket
+	h.hub.BroadcastOrderUpdate(id, statusUpdate.Status, "admin")
+
+	c.JSON(http.StatusOK, gin.H{
+		"message":    "Order status updated successfully",
+		"order_id":   id,
+		"new_status": statusUpdate.Status,
+	})
 }

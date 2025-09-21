@@ -22,6 +22,15 @@ WYJAŚNIENIE     connection.go
 Sprawdza połączenie funkcją Ping()
 
 
+WYJAŚNIENIE WEBSOCKETÓW:
+Client - jeden użytkownik z połączeniem WebSocket
+Hub - "centralka" która zarządza wszystkimi klientami
+Clients - lista aktywnych połączeń
+Register/Unregister - kanały do dodawania/usuwania klientów
+Broadcast - kanał do wysyłania wiadomości do wszystkich
+BroadcastOrderUpdate - funkcja którą wywołamy gdy status się zmieni
+HandleWebSocket - przekształca zwykłe HTTP w WebSocket
+
 
 docker run --name postgres-orders -e POSTGRES_USER=postgres -e POSTGRES_PASSWORD=password123 -e POSTGRES_DB=orders_management -p 5432:5432 -d postgres:17
 

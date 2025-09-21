@@ -14,6 +14,7 @@ export const ordersAPI = {
     getOrderById: (id) => api.get(`/orders/${id}`),
     createOrder: (orderData) => api.post('/orders', orderData),
     updateOrder: (id, orderData) => api.put(`/orders/${id}`, orderData),
+    updateOrderStatus: (id, status) => api.patch(`/orders/${id}/status`, { status }),
 };
 
 export default api;

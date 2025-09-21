@@ -198,6 +198,13 @@ body {
   align-items: center;
 }
 
+.status-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+  align-items: center;
+}
+
 .current-status-badge {
   color: white;
   padding: 12px 24px;
@@ -206,6 +213,101 @@ body {
   font-weight: bold;
   text-transform: uppercase;
   box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+}
+
+.status-dropdown {
+  padding: 10px 15px;
+  border: 2px solid #667eea;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: bold;
+  background: white;
+  color: #333;
+  cursor: pointer;
+  min-width: 200px;
+  text-align: center;
+}
+
+.status-dropdown:hover {
+  border-color: #5a67d8;
+  box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
+}
+
+.status-dropdown:focus {
+  outline: none;
+  border-color: #5a67d8;
+  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
+/* Przyciski akcji */
+.action-buttons {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 100%;
+}
+
+.action-button {
+  padding: 12px 16px;
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.action-button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+}
+
+.action-button:active {
+  transform: translateY(0);
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+/* Typy przycisków */
+.action-button.primary {
+  background: linear-gradient(135deg, #4caf50, #45a049);
+  color: white;
+}
+
+.action-button.primary:hover {
+  background: linear-gradient(135deg, #45a049, #3d8b40);
+}
+
+.action-button.secondary {
+  background: linear-gradient(135deg, #2196f3, #1976d2);
+  color: white;
+}
+
+.action-button.secondary:hover {
+  background: linear-gradient(135deg, #1976d2, #1565c0);
+}
+
+.action-button.danger {
+  background: linear-gradient(135deg, #f44336, #d32f2f);
+  color: white;
+}
+
+.action-button.danger:hover {
+  background: linear-gradient(135deg, #d32f2f, #c62828);
+}
+
+/* Animacja loading dla przycisków */
+.action-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.action-button:disabled:hover {
+  transform: none;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
 }
 
 /* Grid szczegółów */

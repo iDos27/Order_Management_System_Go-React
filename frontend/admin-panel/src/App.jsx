@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react"
 import { ordersAPI } from "./services/api"
 import OrderCard from "./components/OrderCard"
+import useWebSocket from "./hooks/useWebSocket"
 import './App.css'
 
 function App() {
@@ -10,9 +11,36 @@ function App() {
   const [currentView, setCurrentView] = useState('list') // 'list' lub 'details'
   const [selectedOrder, setSelectedOrder] = useState(null)
 
+  const { lastMessage } = useWebSocket('ws://localhost:8080/ws')
+
   useEffect(() => { 
     fetchOrders()
   }, [])
+  useEffect(() => {
+    if (lastMessage && lastMessage.type === 'order_update') {
+      const { order_id, new_status } = lastMessage.payload;
+      
+      // Aktualizujemy stan zamówienia lokalnie
+      setOrders(prevOrders => 
+        prevOrders.map(order => 
+          order.id === order_id 
+            ? { ...order, status: new_status }
+            : order
+        )
+      );
+      
+      // Aktualizujemy selectedOrder jeśli to to samo zamówienie
+      if (selectedOrder && selectedOrder.id === order_id) {
+        setSelectedOrder(prev => ({ ...prev, status: new_status }));
+      }
+      
+      const statusText = getStatusText(new_status);
+      alert(`Zamówienie #${order_id} zmieniono na: ${statusText}`);
+      
+      console.log(`Zamówienie ${order_id} zmieniono na ${new_status}`);
+    }
+  }, [lastMessage, selectedOrder]);
+
 
   const fetchOrders = async () => {
     try {
@@ -35,6 +63,16 @@ function App() {
   const handleBackToList = () => {
     setCurrentView('list')
     setSelectedOrder(null)
+  }
+
+  const handleStatusChange = async (orderId, newStatus) => {
+    try {
+      await ordersAPI.updateOrderStatus(orderId, newStatus)
+
+    } catch (error) {
+      console.error('Błąd podczas zmiany statusu:', error)
+      alert('Błąd podczas zmiany statusu zamówienia')
+    }
   }
 
   const renderOrdersList = () => {
@@ -102,19 +140,30 @@ const renderOrderDetails = () => (
     </div>
     
     <div className="order-details-container">
-      {/* Status Card z możliwością zmiany */}
       <div className="status-card">
         <h3>Status zamówienia</h3>
-        <div className="status-display">
+        <div className="status-controls">
           <div 
             className="current-status-badge"
             style={{ backgroundColor: getStatusColor(selectedOrder.status) }}
           >
             {getStatusText(selectedOrder.status)}
           </div>
-          {/* TODO: Tutaj będzie dropdown do zmiany statusu */}
+
+          <div className="action-buttons">
+            {getAvailableActions(selectedOrder.status).map(action => (
+              <button
+                key={action.status}
+                className={`action-button ${action.type}`}
+                onClick={() => handleStatusChange(selectedOrder.id, action.status)}
+              >
+                {action.label}
+              </button>
+            ))}
+          </div>
         </div>
       </div>
+    
 
       {/* Info Cards */}
       <div className="details-grid">
@@ -152,7 +201,6 @@ const renderOrderDetails = () => (
   </div>
 )
 
-// Helper functions (dodaj je na początku komponentu)
   const getStatusColor = (status) => {
     switch(status) {
       case 'new': return '#ff9800'
@@ -172,6 +220,38 @@ const renderOrderDetails = () => (
       case 'delivered': return 'DOSTARCZONE'
       case 'cancelled': return 'ANULOWANE'
       default: return status.toUpperCase()
+    }
+  }
+
+  const getAvailableActions = (currentStatus) => {
+    switch(currentStatus) {
+      case 'new':
+        return [
+          { status: 'confirmed', label: '✅ Potwierdź', type: 'primary' },
+          { status: 'cancelled', label: '❌ Anuluj', type: 'danger' }
+        ]
+      case 'confirmed':
+        return [
+          { status: 'shipped', label: '🚚 Wyślij', type: 'primary' },
+          { status: 'new', label: '⬅️ Cofnij', type: 'secondary' },
+          { status: 'cancelled', label: '❌ Anuluj', type: 'danger' }
+        ]
+      case 'shipped':
+        return [
+          { status: 'delivered', label: '📦 Dostarczone', type: 'primary' },
+          { status: 'confirmed', label: '⬅️ Cofnij', type: 'secondary' },
+          { status: 'cancelled', label: '❌ Anuluj', type: 'danger' }
+        ]
+      case 'delivered':
+        return [
+          { status: 'shipped', label: '⬅️ Cofnij do wysłane', type: 'secondary' }
+        ]
+      case 'cancelled':
+        return [
+          { status: 'new', label: '🔄 Przywróć', type: 'secondary' }
+        ]
+      default:
+        return []
     }
   }
 

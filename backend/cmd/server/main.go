@@ -4,6 +4,7 @@ import (
 	"log"
 	"order-management-system/internal/database"
 	"order-management-system/internal/handlers"
+	"order-management-system/internal/websocket"
 	"os"
 
 	"github.com/gin-contrib/cors"
@@ -24,8 +25,12 @@ func main() {
 	}
 	defer db.Close()
 
+	// Inicjalizacja WebSocket hub
+	hub := websocket.NewHub()
+	go hub.Run() // Uruchamiamy hub w goroutine
+
 	// Inicjalizacja handlers
-	orderHandler := handlers.NewOrderHandler(db)
+	orderHandler := handlers.NewOrderHandler(db, hub)
 
 	// Setup routera
 	router := gin.Default()
@@ -44,7 +49,12 @@ func main() {
 		api.GET("/orders", orderHandler.GetAllOrders)
 		api.GET("/orders/:id", orderHandler.GetOrderByID)
 		api.POST("/orders", orderHandler.CreateOrder)
+		api.PATCH("/orders/:id/status", orderHandler.UpdateOrderStatus)
 	}
+
+	// WebSocket endpoint
+	router.GET("/ws", websocket.HandleWebSocket(hub))
+
 	// Uruchomienie serwera
 	port := getEnv("SERVER_PORT", "8080")
 	log.Printf("Server running on port %s", port)
