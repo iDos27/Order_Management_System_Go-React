@@ -6,6 +6,7 @@ import (
 	"order-management-system/internal/handlers"
 	"os"
 
+	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
 )
@@ -28,6 +29,14 @@ func main() {
 
 	// Setup routera
 	router := gin.Default()
+
+	// CORS middleware
+	router.Use(cors.New(cors.Config{
+		AllowOrigins:     []string{"http://localhost:5173"},
+		AllowMethods:     []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
+		AllowHeaders:     []string{"Origin", "Content-Type", "Accept", "Authorization"},
+		AllowCredentials: true,
+	}))
 
 	// Routers
 	api := router.Group("/api")

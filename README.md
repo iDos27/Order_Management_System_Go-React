@@ -6,6 +6,8 @@ go get github.com/gin-gonic/gin         - framework web do tworzenia REST API
 go get github.com/lib/pq                - driver PostgreSQL
 go get github.com/joho/godotenv         - ładowanie zmiennych środowiskowych z pliku .env
 go get github.com/gorilla/websocket     - framework web do tworzenia websocketów
+go get github.com/gin-contrib/cors
+
 
 
 
@@ -25,3 +27,11 @@ docker run --name postgres-orders -e POSTGRES_USER=postgres -e POSTGRES_PASSWORD
 
 
 docker exec -i postgres-orders psql -U postgres -d orders_management < backend/migration/create_tables.sql
+
+
+
+
+INSTALACJA REACT
+npm create vite@latest admin-panel -- --template react
+npm install
+npm install axios
