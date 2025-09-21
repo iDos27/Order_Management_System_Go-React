@@ -28,6 +28,12 @@ docker run --name postgres-orders -e POSTGRES_USER=postgres -e POSTGRES_PASSWORD
 
 docker exec -i postgres-orders psql -U postgres -d orders_management < backend/migration/create_tables.sql
 
+DODANIE DO BAZY:
+curl -X POST http://localhost:8080/api/orders   -H "Content-Type: application/json"   -d '{
+    "customer_name": "Piotr Nowak",
+    "customer_email": "piotr@example.com",
+    "total_amount": 99.99
+}'
 
 
 
