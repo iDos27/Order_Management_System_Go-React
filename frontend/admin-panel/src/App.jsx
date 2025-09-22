@@ -30,16 +30,19 @@ function App() {
       );
       
       // Aktualizujemy selectedOrder jeśli to to samo zamówienie
-      if (selectedOrder && selectedOrder.id === order_id) {
-        setSelectedOrder(prev => ({ ...prev, status: new_status }));
-      }
+      setSelectedOrder(prev => {
+        if (prev && prev.id === order_id) {
+          return { ...prev, status: new_status };
+        }
+        return prev;
+      });
       
       const statusText = getStatusText(new_status);
-      alert(`Zamówienie #${order_id} zmieniono na: ${statusText}`);
+      alert(`🔔 Zamówienie #${order_id} zmieniono na: ${statusText}`);
       
       console.log(`Zamówienie ${order_id} zmieniono na ${new_status}`);
     }
-  }, [lastMessage, selectedOrder]);
+  }, [lastMessage]);
 
 
   const fetchOrders = async () => {
