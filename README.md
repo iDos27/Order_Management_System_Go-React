@@ -72,7 +72,7 @@ github.com/gin-contrib/cors        // Cross-Origin Resource Sharing
 
 ```
 Order_Management_System/
-├── backend/                       # Backend Go
+├── backend/                       # Backend Go (Orders Service)
 │   ├── cmd/server/main.go        # Entry point aplikacji
 │   ├── internal/
 │   │   ├── database/             # Połączenie z bazą danych
@@ -82,6 +82,16 @@ Order_Management_System/
 │   ├── migrations/               # SQL skrypty dla bazy
 │   ├── go.mod                    # Zależności Go
 │   └── .env                      # Konfiguracja (DATABASE_URL, PORT)
+├── services/                     # Mikroservices
+│   ├── auth-service/             # ✅ Auth Service (JWT, bcrypt)
+│   │   ├── cmd/server/main.go    # Entry point
+│   │   ├── internal/
+│   │   │   ├── database/         # Połączenie z auth DB
+│   │   │   ├── handlers/         # Register/Login endpoints  
+│   │   │   └── models/           # User, LoginRequest, RegisterRequest
+│   │   └── go.mod                # Zależności Auth Service
+│   ├── notification-service/     # 🔄 W planach
+│   └── analytics-service/        # 🔄 W planach
 ├── frontend/admin-panel/         # Frontend React
 │   ├── src/
 │   │   ├── components/           # Komponenty React (OrderCard)
@@ -264,14 +274,72 @@ export default defineConfig({
 })
 ```
 
+## Mikroservices Architecture (Branch: microservices)
+
+### **Auth Service** ✅ **GOTOWY**
+- **Funkcjonalność**: Rejestracja i logowanie użytkowników z JWT tokenami
+- **Port**: 8081
+- **Baza danych**: PostgreSQL (port 5433)
+- **Endpoints**:
+  - `GET /api/v1/health` - Health check
+  - `POST /api/v1/register` - Rejestracja użytkownika
+  - `POST /api/v1/login` - Logowanie (zwraca JWT token)
+
+#### **Uruchomienie Auth Service:**
+
+```bash
+# 1. Stworzenie kontenera PostgreSQL dla Auth Service
+docker run --name postgres-auth \
+  -e POSTGRES_PASSWORD=password \
+  -e POSTGRES_DB=auth_service \
+  -p 5433:5432 \
+  --restart=always \
+  -d postgres:17
+
+# 2. Stworzenie tabeli users
+docker exec -it postgres-auth psql -U postgres -d auth_service -c "
+CREATE TABLE IF NOT EXISTS users (
+    id SERIAL PRIMARY KEY,
+    email VARCHAR(255) UNIQUE NOT NULL,
+    password_hash VARCHAR(255) NOT NULL,
+    role VARCHAR(50) NOT NULL DEFAULT 'customer',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);"
+
+# 3. Uruchomienie Auth Service
+cd services/auth-service
+go run ./cmd/server
+```
+
+#### **Testowanie Auth Service:**
+
+```bash
+# Health check
+curl http://localhost:8081/api/v1/health
+# Response: {"service":"auth-service","status":"ok"}
+
+# Rejestracja użytkownika
+curl -X POST http://localhost:8081/api/v1/register \
+  -H "Content-Type: application/json" \
+  -d '{"email":"test@example.com","password":"password123","role":"employee"}'
+# Response: {"message":"User registered successfully","user_id":1}
+
+# Logowanie
+curl -X POST http://localhost:8081/api/v1/login \
+  -H "Content-Type: application/json" \
+  -d '{"email":"test@example.com","password":"password123","role":"employee"}'
+# Response: {"token":"eyJhbGciOiJIUzI1NiIs...","user":{...}}
+```
+
 ## Planowany Rozwój
 
 > **Szczegóły w [TODO.md](./TODO.md)**
 
 ### **Najbliższe Cele:**
-- **Auth Service** - System logowania z rolami użytkowników
-- **Notification Service** - Email/SMS/Desktop powiadomienia  
-- **Analytics Service** - Raporty i statystyki
+- ✅ **Auth Service** - System logowania z rolami użytkowników
+- **Notification Service** - Desktop powiadomienia  
+- **Analytics Service** - Raporty do plików TXT
 - **Kubernetes** - Orkiestracja kontenerów
 - **Docker Compose** - Kompletne środowisko deweloperskie
 
@@ -285,9 +353,11 @@ export default defineConfig({
 ## Informacje Techniczne
 
 ### **Porty:**
-- **Backend**: 8080
+- **Backend (Orders)**: 8080
+- **Auth Service**: 8081
 - **Frontend**: 5173  
-- **PostgreSQL**: 5432
+- **PostgreSQL (Orders)**: 5432
+- **PostgreSQL (Auth)**: 5433
 - **WebSocket**: ws://localhost:8080/ws
 
 ### **Statusy Zamówień:**
@@ -299,7 +369,9 @@ export default defineConfig({
 
 ### **Workflow Biznesowy:**
 ```
+```
 new → confirmed → shipped → delivered
  ↓       ↓          ↓
 cancelled ← cancelled ← cancelled
+```
 ```
