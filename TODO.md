@@ -15,13 +15,13 @@
                                 │   (Nginx)       │
                                 └─────────────────┘
                                          │
-                            ┌────────────┼────────────┐
-                            │            │            │
-                    ┌───────▼───┐   ┌────▼────┐   ┌───▼─────┐
-                    │   Auth    │   │ Orders  │   │Analytics│
-                    │  Service  │   │ Service │   │ Service │
-                    │           │   │(Obecny) │   │         │
-                    └───────────┘   └────┬────┘   └─────────┘
+                            ┌────────────┼────────────┬────────────┐
+                            │            │            │            │
+                    ┌───────▼───┐   ┌────▼────┐   ┌───▼─────┐  ┌───▼─────┐
+                    │   Auth    │   │ Orders  │   │Analytics│  │  Mail   │
+                    │  Service  │   │ Service │   │ Service │  │ Service │
+                    │           │   │(Obecny) │   │         │  │         │
+                    └───────────┘   └────┬────┘   └─────────┘  └─────────┘
                                          │
                                    ┌─────▼──────┐
                                    │Notification│
@@ -31,8 +31,9 @@
             ┌─────────────────────────────────────────────────────────────┐
             │                     WARSTWA DANYCH                          │
             ├─────────────────┬─────────────────┬─────────────────────────┤
-            │   PostgreSQL    │      Redis      │       RabbitMQ          │
+            │   PostgreSQL    │    PostgreSQL   │       RabbitMQ          │
             │   (Orders DB)   │   (Cache/Auth)  │    (Notifications)      │
+            │    Port 5432    │    Port 5433    │       Port 5434         │
             └─────────────────┴─────────────────┴─────────────────────────┘
 
                                  KUBERNETES CLUSTER
@@ -43,27 +44,49 @@
              │  └─────────┘ └─────────┘ └─────────┘ └─────────────┘    │
              │                                                         │
              │  ┌─────────┐ ┌─────────┐ ┌─────────────────────────┐    │
-             │  │  Redis  │ │ Postgres│ │        RabbitMQ         │    │
-             │  │   Pod   │ │   Pod   │ │          Pod            │    │
+             │  │ Postgres│ │ Postgres│ │        RabbitMQ         │    │
+             │  │Order DB │ │ Auth DB │ │          Pod            │    │
              │  └─────────┘ └─────────┘ └─────────────────────────┘    │
              └─────────────────────────────────────────────────────────┘
 ```
 
+##  WAŻNE DECYZJE DO PODJĘCIA
+
+### ŚRODOWISKO
+
+#### Opcja 1: Jedna VM + Docker Compose
+- **Terraform** tworzy VM KVM (jako zastępstwo Proxmox) [openSUSE]
+- **Ansible** instaluje Docker i uruchamia Docker Compose
+#### Opcja 2: Mały klaster Kubernetes
+- **Terraform** stawia kilka VM KVM
+- Instalowanie **microKube**
+- Każdy mikroserwis i baza jako Deployment itd.
+
+
 ## PLAN ROZWOJU - LISTA ZADAŃ
 
 ### 1: PRZYGOTOWANIE PROJEKTU
-- [ ] **Utworzenie branchu `feature/microservices`**
-- [ ] **Restructuryzacja folderów** - podział na services/
-- [ ] **Docker Compose** dla lokalnego developmentu
+- [x] **Utworzenie branchu `feature/microservices`**
+- [x] **Restructuryzacja folderów** - podział na services/
 
 ### 2: AUTHENTICATION SERVICE
-- [ ] **Auth Service** - Autoryzacja użytkowników
-- [ ] **Login endpoint** - POST /auth/login z email/password albo nr.zamówienia dla klientów
-- [ ] **Register endpoint** - POST /auth/register
-- [ ] **Token validation** - middleware dla innych serwisów
-- [ ] **Role management** - przypisywanie ról użytkownikom
-- [ ] **Password hashing** - bcrypt dla bezpieczeństwa haseł
-- [ ] **Redis integration** - cache dla sesji użytkowników
+- [x] **Auth Service** - Autoryzacja użytkowników
+- [x] **Login endpoint** - POST /auth/login
+- [x] **Register endpoint** - POST /auth/register
+- [x] **Password hashing** - bcrypt
+- [x] **JWT tokens** - generowanie i walidacja
+- [x] **PostgreSQL integration** - baza użytkowników (port 5433)
+- [x] **CORS middleware** - obsługa żądań cross-origin
+- [x] **Health endpoint** - GET /api/v1/health
+- [ ] **Token validation middleware** - middleware dla innych serwisów
+- [ ] **Role management** - przypisywanie ról użytkownikom (admin/employee/customer)
+- [ ] **Session management** - tracking aktywnych sesji (PostgreSQL)
+- [ ] **Token blacklist** - możliwość unieważnienia tokenów
+- [ ] **Database migrations** - skrypt SQL dla nowych tabel
+- [ ] **Rate limiting** - ograniczenie prób logowania
+- [ ] **Input validation** - walidacja email, siła hasła
+- [ ] **Logout endpoint** - POST /logout z blacklist tokenów
+
 
 ### 3: NOTIFICATION SERVICE  
 - [ ] **Notification Service** - Powiadomienia systemowe Linux o nowym zamówieniu
@@ -71,7 +94,7 @@
 - [ ] **Click to open** - kliknięcie w powiadomienie otwiera aplikację w przeglądarce
 - [ ] **Webhook endpoints** - odbieranie eventów o zmianach statusu z Orders Service
 - [ ] **Notification formatting** - czytelne komunikaty o statusach zamówień
-- [ ] **Queue system** - Redis/RabbitMQ dla asynchronicznych powiadomień
+- [ ] **Queue system** - RabbitMQ dla asynchronicznych powiadomień
 - [ ] **Service integration** - komunikacja z Orders Service przez HTTP/WebSocket
 
 ### 4: ANALYTICS SERVICE (???)
@@ -83,6 +106,20 @@
 - [ ] **Cron jobs** - automatyczne generowanie cyklicznych raportów
 - [ ] **File storage** - zapisywanie raportów w folderze /reports
 
+### 4,5: MAIL NOTIFICATION SERVICE (???)
+- [ ] **Mail Notification Service** - Wysyłanie wiadomości email o nowych zamówieniach
+- [ ] **SMTP integration** - konfiguracja serwera SMTP (Gmail/SendGrid/Mailgun)
+- [ ] **Email templates** - szablony HTML dla różnych statusów zamówień
+- [ ] **Template engine** - renderowanie dynamicznych treści email
+- [ ] **Email queue** - kolejka emaili do wysłania (RabbitMQ integration)
+- [ ] **Webhook endpoints** - odbieranie eventów o zmianach z Orders Service
+- [ ] **Email validation** - weryfikacja poprawności adresów email
+- [ ] **Retry mechanism** - ponowne próby wysłania w przypadku błędów
+- [ ] **Email history** - historia wysłanych wiadomości (PostgreSQL)
+- [ ] **Unsubscribe handling** - obsługa rezygnacji z powiadomień
+- [ ] **Rate limiting** - ograniczenie liczby emaili na godzinę
+- [ ] **Service integration** - komunikacja z Orders i Auth Service przez API
+
 ### 5: INTEGRACJA SERWISÓW
 - [ ] **API Gateway** - Nginx reverse proxy dla routingu
 - [ ] **Service discovery** - automatyczne wykrywanie serwisów
@@ -92,11 +129,9 @@
 - [ ] **Distributed logging** - centralne logowanie wszystkich serwisów
 
 ### 6: KONTENERYZACJA
-- [ ] **Dockerfile dla serwisu** - Auth, Notification, Analytics
+- [ ] **Dockerfile dla każdego serwisu** - Auth, Orders, Notification, Analytics
 - [ ] **Docker Compose** - kompletne środowisko developerskie
 - [ ] **Multi-stage builds** - optymalizacja rozmiarów obrazów
-- [ ] **Health checks** - sprawdzanie stanu kontenerów
-- [ ] **Environment variables** - konfiguracja przez zmienne środowiskowe
 
 ### 7: KUBERNETES
 - [ ] **Kubernetes manifests** - Deployment, Service, ConfigMap
@@ -115,17 +150,14 @@
 - [ ] **Alerting** - powiadomienia o problemach
 - [ ] **Log aggregation** - centralne zbieranie logów
 
-### 9: ŚRODOWISKO (Nie wymagane)
-- [] **Terraform** - tworzenie maszyny wirtualnej na serwerze
-- [] **Ansible** - konfiguracja systemu pod kątem bezpieczeństwa
 
 ## INFORMACJE TECHNICZNE
 
 ### **Technologie:**
 - **Backend**: Go (Gin framework) dla wszystkich serwisów
-- **Auth**: JWT tokens + Redis cache
+- **Auth**: JWT tokens 
 - **Queue**: RabbitMQ dla asynchronicznych zadań  
-- **Database**: PostgreSQL (główna) + Redis (cache)
+- **Database**: PostgreSQL (główna)
 - **Containers**: Docker + Docker Compose
 - **Orchestration**: Kubernetes
 - **Monitoring**: Prometheus + Grafana
@@ -134,16 +166,16 @@
 ### **Porty serwisów:**
 - **Orders Service**: 8080
 - **Auth Service**: 8081
-- **Notification Service**: 8082 (Linux desktop notifications)
-- **Analytics Service**: 8083 (TXT reports generation)
+- **Notification Service**: 8082
+- **Analytics Service**: 8083
+- **Mail Service** 8084
 - **API Gateway**: 80/443
 
 ### **Bazy danych:**
 - **orders_db**: PostgreSQL dla Orders Service
 - **auth_db**: PostgreSQL dla Auth Service
 - **notifications_log**: SQLite/PostgreSQL dla historii powiadomień (opcjonalne)
-- **analytics_cache**: Redis dla cache'owania obliczeń (opcjonalne)
-- **redis**: Cache dla sesji i temp data
+- **rabbitmq**: Queue dla powiadomień
 
 ## ZALETY
 

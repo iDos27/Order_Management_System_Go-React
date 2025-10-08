@@ -13,7 +13,6 @@ func main() {
 	// Ustawienie trybu produkcyjnego dla Gin
 	gin.SetMode(gin.ReleaseMode)
 
-	// Sprawdzanie zmiennych środowiskowych
 	dbURL := os.Getenv("DATABASE_URL")
 	if dbURL == "" {
 		dbURL = "postgres://postgres:password@localhost:5433/auth_service?sslmode=disable"
@@ -32,7 +31,6 @@ func main() {
 		log.Println("Using default PORT 8081")
 	}
 
-	// Ustawienie zmiennej środowiskowej dla bazy danych
 	os.Setenv("AUTH_DATABASE_URL", dbURL)
 
 	db, err := database.NewConnection()
@@ -42,6 +40,11 @@ func main() {
 	defer db.Close()
 
 	log.Println("Connected to the database")
+
+	if err := db.CreateUsersTable(); err != nil {
+		log.Fatalf("Failed to create users table: %v", err)
+	}
+	log.Println("Users table is ready")
 
 	authHandler := handlers.NewAuthHandler(db)
 

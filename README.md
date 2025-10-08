@@ -188,7 +188,9 @@ docker run --name postgres-orders \
   -e POSTGRES_USER=postgres \
   -e POSTGRES_PASSWORD=password123 \
   -e POSTGRES_DB=orders_management \
-  -p 5432:5432 -d postgres:17
+  -p 5432:5432 \
+  --restart always \
+  -d postgres:17
 
 # Wykonanie migracji
 docker exec -i postgres-orders psql -U postgres -d orders_management < backend/migrations/create_tables.sql
@@ -336,20 +338,6 @@ curl -X POST http://localhost:8081/api/v1/login \
 
 > **Szczegóły w [TODO.md](./TODO.md)**
 
-### **Najbliższe Cele:**
-- ✅ **Auth Service** - System logowania z rolami użytkowników
-- **Notification Service** - Desktop powiadomienia  
-- **Analytics Service** - Raporty do plików TXT
-- **Kubernetes** - Orkiestracja kontenerów
-- **Docker Compose** - Kompletne środowisko deweloperskie
-
-### **Architektura Docelowa:**
-- **Mikrousługi** - Podział na niezależne serwisy
-- **API Gateway** - Centralne zarządzanie ruchem
-- **Service Mesh** - Komunikacja między serwisami
-- **Monitoring** - Prometheus + Grafana
-- **CI/CD** - Automatyczne wdrażanie
-
 ## Informacje Techniczne
 
 ### **Porty:**
@@ -367,11 +355,3 @@ curl -X POST http://localhost:8081/api/v1/login \
 4. **delivered** → Dostarczone
 5. **cancelled** → Anulowane (możliwe na każdym etapie)
 
-### **Workflow Biznesowy:**
-```
-```
-new → confirmed → shipped → delivered
- ↓       ↓          ↓
-cancelled ← cancelled ← cancelled
-```
-```

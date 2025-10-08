@@ -16,7 +16,7 @@ type DB struct {
 func NewConnection() (*DB, error) {
 	databaseURL := os.Getenv("AUTH_DATABASE_URL")
 	if databaseURL == "" {
-		databaseURL = "postgres://postgres:password123@localhost:5432/auth_service?sslmode=disable"
+		databaseURL = "postgres://postgres:password@localhost:5433/auth_service?sslmode=disable"
 	}
 
 	db, err := sql.Open("postgres", databaseURL)

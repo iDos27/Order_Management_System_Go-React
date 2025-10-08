@@ -89,7 +89,8 @@ func (h *AuthHandler) Login(c *gin.Context) {
 		return
 	}
 
-	user.Password = "" // Nie zwracanie hasła w odpowiedzi
+	// Nie zwracanie hasła w odpowiedzi
+	user.Password = ""
 	c.JSON(http.StatusOK, models.LoginResponse{
 		Token: token,
 		User:  user,
