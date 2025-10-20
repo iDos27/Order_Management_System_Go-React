@@ -30,6 +30,34 @@ type LoginResponse struct {
 	User  User   `json:"user"`
 }
 
+// Pod middleware/auth.go
+type CurrentUser struct {
+	ID    int    `json:"id"`
+	Email string `json:"email"`
+	Role  string `json:"role"`
+}
+
+func IsAdmin(role string) bool {
+	return role == RoleAdmin
+}
+
+func IsEmployee(role string) bool {
+	return role == RoleEmployee
+}
+
+func IsCustomer(role string) bool {
+	return role == RoleCustomer
+}
+
+func HasRole(userRole string, allowedRoles []string) bool {
+	for _, role := range allowedRoles {
+		if userRole == role {
+			return true
+		}
+	}
+	return false
+}
+
 const (
 	RoleAdmin    = "admin"    // Admin
 	RoleEmployee = "employee" // Pracownik

@@ -3,6 +3,7 @@ package main
 import (
 	"auth-service/internal/database"
 	"auth-service/internal/handlers"
+	"auth-service/middleware"
 	"log"
 	"os"
 
@@ -32,6 +33,7 @@ func main() {
 	}
 
 	os.Setenv("AUTH_DATABASE_URL", dbURL)
+	os.Setenv("JWT_SECRET", jwtSecret)
 
 	db, err := database.NewConnection()
 	if err != nil {
@@ -47,6 +49,7 @@ func main() {
 	log.Println("Users table is ready")
 
 	authHandler := handlers.NewAuthHandler(db)
+	authMiddleware := middleware.NewAuthMiddleware(db)
 
 	// Konfiguracja routera
 	router := gin.Default()
@@ -72,12 +75,31 @@ func main() {
 		api.POST("/register", authHandler.Register)
 		api.POST("/login", authHandler.Login)
 
+		api.GET("/validate-token", authMiddleware.ValidateTokenEndpoint)
+
 		api.GET("/health", func(c *gin.Context) {
 			c.JSON(200, gin.H{
 				"status":  "ok",
 				"service": "auth-service",
 			})
 		})
+
+		protected := api.Group("")
+		protected.Use(authMiddleware.RequireAuth())
+		{
+			protected.GET("/profile", authHandler.Profile)
+		}
+
+		admin := api.Group("/admin")
+		admin.Use(authMiddleware.RequireAuth())
+		admin.Use(authMiddleware.RequireAdmin())
+		{
+			admin.GET("/users", func(c *gin.Context) {
+				c.JSON(200, gin.H{
+					"message": "Admin access to users",
+				})
+			})
+		}
 	}
 
 	// Uruchomienie serwera

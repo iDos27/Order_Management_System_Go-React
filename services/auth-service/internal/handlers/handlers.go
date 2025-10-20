@@ -3,6 +3,7 @@ package handlers
 import (
 	"auth-service/internal/database"
 	"auth-service/internal/models"
+	"auth-service/middleware"
 	"database/sql"
 	"net/http"
 	"os"
@@ -113,4 +114,28 @@ func (h *AuthHandler) generateJWTToken(user models.User) (string, error) {
 	}
 
 	return token.SignedString([]byte(secret))
+}
+
+func (h *AuthHandler) Profile(c *gin.Context) {
+	currentUser, err := middleware.GetCurrentUser(c)
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid user context"})
+		return
+	}
+
+	// Pobierz pełne dane z bazy
+	var user models.User
+	err = h.db.QueryRow(`
+	SELECT id, email, role, created_at, updated_at
+	FROM users WHERE id = $1
+	`, currentUser.ID).Scan(&user.ID, &user.Email, &user.Role, &user.CreatedAt, &user.UpdatedAt)
+
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "User not found"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"user": user,
+	})
 }
