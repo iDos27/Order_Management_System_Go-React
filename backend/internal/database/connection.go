@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"log"
 	"os"
-	
+
 	_ "github.com/lib/pq" // PostgreSQL driver
 )
 
@@ -17,11 +17,11 @@ func NewConnection() (*DB, error) {
 	host := getEnv("DB_HOST", "localhost")
 	port := getEnv("DB_PORT", "5432")
 	user := getEnv("DB_USER", "postgres")
-	password := getEnv("DB_PASSWORD", "password")
+	password := getEnv("DB_PASSWORD", "password123")
 	dbname := getEnv("DB_NAME", "orders_management")
 
 	psqlInfo := fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=%s sslmode=disable",
-        host, port, user, password, dbname)
+		host, port, user, password, dbname)
 
 	db, err := sql.Open("postgres", psqlInfo)
 	if err != nil {

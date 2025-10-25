@@ -9,15 +9,9 @@ import (
 
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
-	"github.com/joho/godotenv"
 )
 
 func main() {
-	// Ładowanie .env
-	if err := godotenv.Load(); err != nil {
-		log.Println("No .env file found, using system env variables")
-	}
-
 	// Połączenie z bazą
 	db, err := database.NewConnection()
 	if err != nil {

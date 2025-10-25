@@ -23,7 +23,7 @@ func NewOrderHandler(db *database.DB, hub *websocket.Hub) *OrderHandler {
 // GET /api/orders - Lista wszystkich zamówień (admin)
 func (h *OrderHandler) GetAllOrders(c *gin.Context) {
 	rows, err := h.db.Query(`
-        SELECT id, customer_name, customer_email, status, total_amount, created_at, updated_at 
+        SELECT id, customer_name, customer_email, source, status, total_amount, created_at, updated_at 
         FROM orders 
         ORDER BY created_at DESC
     `)
@@ -36,7 +36,7 @@ func (h *OrderHandler) GetAllOrders(c *gin.Context) {
 	var orders []models.Order
 	for rows.Next() {
 		var order models.Order
-		err := rows.Scan(&order.ID, &order.CustomerName, &order.CustomerEmail,
+		err := rows.Scan(&order.ID, &order.CustomerName, &order.CustomerEmail, &order.Source,
 			&order.Status, &order.TotalAmount, &order.CreatedAt, &order.UpdatedAt)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to scan order"})
@@ -59,9 +59,9 @@ func (h *OrderHandler) GetOrderByID(c *gin.Context) {
 
 	var order models.Order
 	err = h.db.QueryRow(`
-        SELECT id, customer_name, customer_email, status, total_amount, created_at, updated_at 
+        SELECT id, customer_name, customer_email, source, status, total_amount, created_at, updated_at 
         FROM orders WHERE id = $1
-    `, id).Scan(&order.ID, &order.CustomerName, &order.CustomerEmail,
+    `, id).Scan(&order.ID, &order.CustomerName, &order.CustomerEmail, &order.Source,
 		&order.Status, &order.TotalAmount, &order.CreatedAt, &order.UpdatedAt)
 
 	if err != nil {
@@ -79,18 +79,25 @@ func (h *OrderHandler) CreateOrder(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid JSON data"})
 		return
 	}
+	if order.Source == "" {
+		order.Source = models.SourceWebsite
+	}
 
+	order.Status = models.StatusNew // Ustawiamy domyślny status
 	err := h.db.QueryRow(`
-		INSERT INTO orders (customer_name, customer_email, status, total_amount)
-		VALUES ($1, $2, $3, $4)
+		INSERT INTO orders (customer_name, customer_email, source, status, total_amount, created_at, updated_at)
+		VALUES ($1, $2, $3, $4, $5, NOW(), NOW())
 		RETURNING id, created_at, updated_at
-		`, order.CustomerName, order.CustomerEmail, models.StatusNew, order.TotalAmount).
+		`, order.CustomerName, order.CustomerEmail, order.Source, order.Status, order.TotalAmount).
 		Scan(&order.ID, &order.CreatedAt, &order.UpdatedAt)
 
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create order"})
 		return
 	}
+
+	// WebSocket powiadomienie o nowym zamówieniu
+	h.hub.BroadcastOrderUpdate(order.ID, string(order.Status), "system")
 
 	c.JSON(http.StatusCreated, order)
 }

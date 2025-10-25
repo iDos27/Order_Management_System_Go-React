@@ -20,14 +20,24 @@ function App() {
     if (lastMessage && lastMessage.type === 'order_update') {
       const { order_id, new_status } = lastMessage.payload;
       
-      // Aktualizujemy stan zamówienia lokalnie
-      setOrders(prevOrders => 
-        prevOrders.map(order => 
-          order.id === order_id 
-            ? { ...order, status: new_status }
-            : order
-        )
-      );
+      // Sprawdzamy czy zamówienie już istnieje (używamy callback żeby uniknąć dependency)
+      setOrders(prevOrders => {
+        const orderExists = prevOrders.find(order => order.id === order_id);
+        
+        if (orderExists) {
+          // Aktualizujemy istniejące zamówienie
+          return prevOrders.map(order => 
+            order.id === order_id 
+              ? { ...order, status: new_status }
+              : order
+          );
+        } else {
+          // Nowe zamówienie - pobieramy z API w następnym cyklu
+          console.log(`Nowe zamówienie #${order_id}, pobieram z API...`);
+          setTimeout(() => fetchOrders(), 100); // Async call żeby nie blokować
+          return prevOrders; // Zwracamy bez zmian na razie
+        }
+      });
       
       // Aktualizujemy selectedOrder jeśli to to samo zamówienie
       setSelectedOrder(prev => {
@@ -39,10 +49,8 @@ function App() {
       
       const statusText = getStatusText(new_status);
       alert(`🔔 Zamówienie #${order_id} zmieniono na: ${statusText}`);
-      
-      console.log(`Zamówienie ${order_id} zmieniono na ${new_status}`);
     }
-  }, [lastMessage]);
+  }, [lastMessage]); // ✅ Usunęliśmy 'orders' z dependency!
 
 
   const fetchOrders = async () => {

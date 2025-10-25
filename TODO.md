@@ -97,30 +97,7 @@
 - [ ] **Queue system** - RabbitMQ dla asynchronicznych powiadomień
 - [ ] **Service integration** - komunikacja z Orders Service przez HTTP/WebSocket
 
-### 4: ANALYTICS SERVICE (???)
-- [ ] **Analytics Service** - Prosta analiza danych zamówień
-- [ ] **Cyclical reports** - raporty cykliczne w formacie TXT
-- [ ] **Order statistics** - podstawowe statystyki (liczba, statusy, trendy)
-- [ ] **Data aggregation** - zbieranie danych z Orders Service przez API
-- [ ] **Simple calculations** - suma zamówień, średnia wartość, najpopularniejsze statusy
-- [ ] **Cron jobs** - automatyczne generowanie cyklicznych raportów
-- [ ] **File storage** - zapisywanie raportów w folderze /reports
-
-### 4,5: MAIL NOTIFICATION SERVICE (???)
-- [ ] **Mail Notification Service** - Wysyłanie wiadomości email o nowych zamówieniach
-- [ ] **SMTP integration** - konfiguracja serwera SMTP (Gmail/SendGrid/Mailgun)
-- [ ] **Email templates** - szablony HTML dla różnych statusów zamówień
-- [ ] **Template engine** - renderowanie dynamicznych treści email
-- [ ] **Email queue** - kolejka emaili do wysłania (RabbitMQ integration)
-- [ ] **Webhook endpoints** - odbieranie eventów o zmianach z Orders Service
-- [ ] **Email validation** - weryfikacja poprawności adresów email
-- [ ] **Retry mechanism** - ponowne próby wysłania w przypadku błędów
-- [ ] **Email history** - historia wysłanych wiadomości (PostgreSQL)
-- [ ] **Unsubscribe handling** - obsługa rezygnacji z powiadomień
-- [ ] **Rate limiting** - ograniczenie liczby emaili na godzinę
-- [ ] **Service integration** - komunikacja z Orders i Auth Service przez API
-
-### 5: INTEGRACJA SERWISÓW
+### 4: INTEGRACJA SERWISÓW
 - [ ] **API Gateway** - Nginx reverse proxy dla routingu
 - [ ] **Service discovery** - automatyczne wykrywanie serwisów
 - [ ] **Inter-service communication** - HTTP calls między serwisami
@@ -128,12 +105,12 @@
 - [ ] **Error handling** - obsługa błędów między serwisami
 - [ ] **Distributed logging** - centralne logowanie wszystkich serwisów
 
-### 6: KONTENERYZACJA
+### 5: KONTENERYZACJA
 - [ ] **Dockerfile dla każdego serwisu** - Auth, Orders, Notification, Analytics
 - [ ] **Docker Compose** - kompletne środowisko developerskie
 - [ ] **Multi-stage builds** - optymalizacja rozmiarów obrazów
 
-### 7: KUBERNETES
+### 6: KUBERNETES
 - [ ] **Kubernetes manifests** - Deployment, Service, ConfigMap
 - [ ] **Namespaces** - podział na środowiska (dev/staging/prod)
 - [ ] **Ingress controller** - routing ruchu zewnętrznego
@@ -141,14 +118,6 @@
 - [ ] **Secrets management** - bezpieczne przechowywanie haseł/kluczy
 - [ ] **Auto-scaling** - automatyczne skalowanie podów
 - [ ] **Rolling updates** - bezpieczne wdrażanie nowych wersji
-
-### 8: MONITORING I OBSERVABILITY (???)
-- [ ] **Prometheus** - zbieranie metryk z aplikacji
-- [ ] **Grafana** - dashboardy i wizualizacja metryk
-- [ ] **Health endpoints** - /health dla każdego serwisu
-- [ ] **Application metrics** - custom metryki biznesowe
-- [ ] **Alerting** - powiadomienia o problemach
-- [ ] **Log aggregation** - centralne zbieranie logów
 
 
 ## INFORMACJE TECHNICZNE

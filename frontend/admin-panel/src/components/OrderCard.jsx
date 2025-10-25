@@ -1,25 +1,23 @@
 import './OrderCard.css';
 
 function OrderCard({ order, onClick }) {
-    const getStatusColor = (status) => {
-        switch (status) {
-            case 'new': return '#ff9800';
-            case 'confirmed': return '#2196f3'
-            case 'shipped': return '#4caf50'
-            case 'delivered': return '#8bc34a'
-            case 'canceled': return '#f44336'
+    const getSourceColor = (source) => {
+        switch (source) {
+            case 'źródło_jeden': return '#e48650ff';
+            case 'źródło_dwa': return '#d36b8aff';
+            case 'website': return '#2196f3';
+            case 'manual': return '#4caf50';
             default: return '#757575'
         }
     }
 
-    const getStatusText = (status) => {
-        switch (status) {
-            case 'new': return 'NOWE'
-            case 'confirmed': return 'POTWIERDZONE'
-            case 'shipped': return 'WYSŁANE'
-            case 'delivered': return 'DOSTARCZONE';
-            case 'canceled': return 'ANULOWANE'
-            default: return status.toUpperCase()
+    const getSourceText = (source) => {
+        switch (source) {
+            case 'źródło_jeden': return 'Źródło 1';
+            case 'źródło_dwa': return 'Źródło 2';
+            case 'website': return 'Strona WWW';
+            case 'manual': return 'Ręczne';
+            default: return source ? source.toUpperCase() : 'NIEZNANE';
         }
     }
 
@@ -28,10 +26,10 @@ function OrderCard({ order, onClick }) {
           <div className="order-header">
             <h3>Zamówienie #{order.id}</h3>
             <div 
-              className="status-badge"
-              style={{ backgroundColor: getStatusColor(order.status) }}
+              className="source-badge"
+              style={{ backgroundColor: getSourceColor(order.source) }}
             >
-              {getStatusText(order.status)}
+              {getSourceText(order.source)}
             </div>
           </div>
           <div className="order-info">
