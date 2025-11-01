@@ -2,9 +2,9 @@ package main
 
 import (
 	"log"
-	"order-management-system/internal/database"
-	"order-management-system/internal/handlers"
-	"order-management-system/internal/websocket"
+	"order-service/internal/database"
+	"order-service/internal/handlers"
+	"order-service/internal/websocket"
 	"os"
 
 	"github.com/gin-contrib/cors"

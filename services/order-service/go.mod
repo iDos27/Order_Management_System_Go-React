@@ -1,4 +1,4 @@
-module order-management-system
+module order-service
 
 go 1.24.7
 

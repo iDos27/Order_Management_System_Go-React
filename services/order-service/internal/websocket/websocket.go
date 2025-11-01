@@ -107,7 +107,7 @@ func HandleWebSocket(hub *Hub) gin.HandlerFunc {
 
 		hub.Register <- client
 
-		go writePump(client, hub)
+		go writePump(client)
 		go readPump(client, hub)
 	}
 }
@@ -135,7 +135,7 @@ func readPump(client *Client, hub *Hub) {
 }
 
 // writePump - wysyła wiadomości do klienta
-func writePump(client *Client, hub *Hub) {
+func writePump(client *Client) {
 	defer client.Conn.Close()
 
 	for {
