@@ -12,7 +12,6 @@ const LoginPage = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
 
-  // Redirect if already logged in
   if (user) {
     return <Navigate to="/" replace />;
   }
@@ -30,7 +29,10 @@ const LoginPage = () => {
     setError('');
 
     try {
-      await login(formData.email, formData.password);
+      const result = await login(formData);
+      if (!result.success) {
+        setError(result.error || 'Błąd logowania');
+      }
     } catch (err) {
       setError(err.message || 'Błąd logowania');
     } finally {
@@ -88,8 +90,6 @@ const LoginPage = () => {
               {isLoading ? 'Logowanie...' : 'Zaloguj się'}
             </button>
           </form>
-
-
         </div>
       </div>
     </div>

@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react"
-import { ordersAPI } from "../services/api"
+import { useAuth } from "../context/AuthContext"
 import OrderCard from "./OrderCard"
 import useWebSocket from "../hooks/useWebSocket"
 
@@ -7,10 +7,13 @@ const OrderManagement = () => {
   const [orders, setOrders] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
-  const [currentView, setCurrentView] = useState('list') // 'list' lub 'details'
+  const [currentView, setCurrentView] = useState('list')
   const [selectedOrder, setSelectedOrder] = useState(null)
 
-  const { lastMessage } = useWebSocket('ws://localhost:8080/ws')
+  // Pobierz token i helper z AuthContext
+  const { token, isAuthenticated, getAuthHeaders } = useAuth()
+
+  const { lastMessage } = useWebSocket('ws://localhost/ws')
 
   useEffect(() => { 
     fetchOrders()
@@ -34,8 +37,8 @@ const OrderManagement = () => {
         } else {
           // Nowe zamówienie - pobieramy z API w następnym cyklu
           console.log(`Nowe zamówienie #${order_id}, pobieram z API...`);
-          setTimeout(() => fetchOrders(), 100); // Async call żeby nie blokować
-          return prevOrders; // Zwracamy bez zmian
+          setTimeout(() => fetchOrders(), 100);
+          return prevOrders;
         }
       });
       
@@ -55,8 +58,24 @@ const OrderManagement = () => {
   const fetchOrders = async () => {
     try {
       setLoading(true)
-      const response = await ordersAPI.getAllOrders()
-      setOrders(response.data)
+      
+      // Sprawdź autoryzację
+      if (!isAuthenticated || !token) {
+        setError('Wymagane logowanie')
+        return
+      }
+
+      // Wykonaj request z tokenem z AuthContext
+      const response = await fetch('/api/orders', {
+        headers: getAuthHeaders(),
+      })
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`)
+      }
+
+      const ordersData = await response.json()
+      setOrders(ordersData)
       setError(null)
     } catch (err) {
       setError('Błąd podczas pobierania zamówień: ' + err.message)
@@ -77,7 +96,24 @@ const OrderManagement = () => {
 
   const handleStatusChange = async (orderId, newStatus) => {
     try {
-      await ordersAPI.updateOrderStatus(orderId, newStatus)
+      // Sprawdź autoryzację
+      if (!isAuthenticated || !token) {
+        alert('Wymagane logowanie')
+        return
+      }
+
+      // Wykonaj request z tokenem z AuthContext
+      const response = await fetch(`/api/orders/${orderId}/status`, {
+        method: 'PATCH',
+        headers: getAuthHeaders(),
+        body: JSON.stringify({ status: newStatus }),
+      })
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`)
+      }
+
+      console.log(`Status zamówienia ${orderId} zmieniony na ${newStatus}`)
     } catch (error) {
       console.error('Błąd podczas zmiany statusu:', error)
       alert('Błąd podczas zmiany statusu zamówienia')
@@ -173,7 +209,6 @@ const OrderManagement = () => {
           </div>
         </div>
       
-        {/* Info Cards */}
         <div className="details-grid">
           <div className="details-card">
             <div className="card-icon">👤</div>

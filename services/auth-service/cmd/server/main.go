@@ -68,6 +68,14 @@ func main() {
 		c.Next()
 	})
 
+	// auth_request
+	router.GET("/health", func(c *gin.Context) {
+		c.JSON(200, gin.H{
+			"status":  "ok",
+			"service": "auth-service",
+		})
+	})
+
 	// Routing API
 	api := router.Group("/api/v1")
 	{
@@ -77,13 +85,16 @@ func main() {
 
 		api.GET("/validate-token", authMiddleware.ValidateTokenEndpoint)
 
-		api.GET("/health", func(c *gin.Context) {
-			c.JSON(200, gin.H{
-				"status":  "ok",
-				"service": "auth-service",
-			})
+		api.GET("/validate", func(c *gin.Context) {
+			middleware := authMiddleware.RequireAuth()
+			middleware(c)
+
+			if !c.IsAborted() {
+				c.Status(200) // NGINX auth_request success
+			}
 		})
 
+		// Endpointy chronione
 		protected := api.Group("")
 		protected.Use(authMiddleware.RequireAuth())
 		{

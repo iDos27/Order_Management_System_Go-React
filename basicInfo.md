@@ -1,5 +1,18 @@
 # Order_Management_System_Go-React
 
+Uruchomienie NGINX:
+Być w głownym folderze projektu
+
+docker run -d \
+  --name nginx-gateway \
+  --network host \
+  nginx:alpine
+
+docker cp nginx/nginx.conf nginx-gateway:/etc/nginx/nginx.conf
+
+docker exec nginx-gateway nginx -s reload 
+
+
 Konto admin:
 admin@test.com
 admin123
