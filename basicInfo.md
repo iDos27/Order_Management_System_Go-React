@@ -1,5 +1,14 @@
 # Order_Management_System_Go-React
 
+Konto admin:
+admin@test.com
+admin123
+
+Konto employee
+gosc@test.com
+gosc123
+
+
 
 Użyte zależności:
 go get github.com/gin-gonic/gin         - framework web do tworzenia REST API
