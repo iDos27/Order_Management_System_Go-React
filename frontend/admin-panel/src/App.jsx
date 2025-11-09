@@ -5,6 +5,7 @@ import LoginPage from './pages/LoginPage'
 import ProtectedRoute from './components/ProtectedRoute'
 import Dashboard from './components/Dashboard'
 import OrderManagement from './components/OrderManagement'
+import Reports from './components/Reports'
 import './App.css'
 
 function App() {
@@ -19,6 +20,16 @@ function App() {
               <ProtectedRoute>
                 <Dashboard>
                   <OrderManagement />
+                </Dashboard>
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/reports" 
+            element={
+              <ProtectedRoute requireAdmin={true}>
+                <Dashboard>
+                  <Reports />
                 </Dashboard>
               </ProtectedRoute>
             } 

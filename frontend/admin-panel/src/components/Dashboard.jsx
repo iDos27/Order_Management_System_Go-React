@@ -1,10 +1,13 @@
 import React, { useState, useContext } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext';
 import { AUTH_BASE_URL } from '../services/api';
 import './Dashboard.css';
 
 const Dashboard = ({ children }) => {
   const { user, logout } = useContext(AuthContext);
+  const navigate = useNavigate();
+  const location = useLocation();
   const [showRegisterModal, setShowRegisterModal] = useState(false);
   const [registerForm, setRegisterForm] = useState({
     email: '',
@@ -109,6 +112,24 @@ const Dashboard = ({ children }) => {
           </div>
         </div>
       </header>
+
+      {/* Navigation - Only for admins */}
+      {user?.role === 'admin' && (
+        <nav className="dashboard-navigation">
+          <button 
+            className={`nav-btn ${location.pathname === '/' ? 'active' : ''}`}
+            onClick={() => navigate('/')}
+          >
+            📋 Zamówienia
+          </button>
+          <button 
+            className={`nav-btn ${location.pathname === '/reports' ? 'active' : ''}`}
+            onClick={() => navigate('/reports')}
+          >
+            📊 Raporty
+          </button>
+        </nav>
+      )}
 
       <main className="dashboard-content">
         {children}
