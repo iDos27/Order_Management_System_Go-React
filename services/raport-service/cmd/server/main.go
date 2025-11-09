@@ -10,6 +10,7 @@ import (
 	"raport-service/internal/handlers"
 	"raport-service/internal/models"
 	"raport-service/internal/services"
+	"raport-service/middleware"
 
 	"github.com/gorilla/mux"
 	"github.com/robfig/cron/v3"
@@ -32,12 +33,12 @@ func main() {
 	// Konfiguracja routingu
 	router := mux.NewRouter()
 
-	// API endpoints
+	// API endpoints z middleware autoryzacji
 	api := router.PathPrefix("/api").Subrouter()
-	api.HandleFunc("/reports/generate", reportHandler.GenerateReport).Methods("POST")
-	api.HandleFunc("/reports/stats", reportHandler.GetQuickStats).Methods("GET")
+	api.HandleFunc("/reports/generate", middleware.AuthMiddleware(reportHandler.GenerateReport)).Methods("POST")
+	api.HandleFunc("/reports/stats", middleware.AuthMiddleware(reportHandler.GetQuickStats)).Methods("GET")
 
-	// Health check endpoint
+	// Health check endpoint (bez autoryzacji)
 	router.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 		w.Write([]byte("Raport Service is running"))

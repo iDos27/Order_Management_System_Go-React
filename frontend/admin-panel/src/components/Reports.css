@@ -68,20 +68,26 @@
 }
 
 .period-btn {
-  padding: 6px 12px;
+  padding: 8px 14px;
   border: 1px solid #dee2e6;
-  border-radius: 4px;
+  border-radius: 6px;
   background: white;
   color: #495057;
-  font-size: 12px;
+  font-size: 13px;
   cursor: pointer;
   transition: all 0.2s ease;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 4px;
 }
 
 .period-btn:hover {
   background: #f8f9fa;
   border-color: #007bff;
   color: #007bff;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
 }
 
 .stat-item {
@@ -146,6 +152,22 @@
   gap: 20px;
 }
 
+.calculated-period {
+  padding: 10px 12px;
+  background: #f8f9fa;
+  border: 1px solid #dee2e6;
+  border-radius: 6px;
+  margin: -5px 0 5px 0;
+}
+
+.calculated-period small {
+  color: #495057;
+  font-size: 13px;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
 .form-group {
   display: flex;
   flex-direction: column;
@@ -158,6 +180,23 @@
   font-size: 14px;
 }
 
+/* Month/Year fallback selectors */
+.month-fallback {
+  display: flex;
+  gap: 10px;
+  width: 100%;
+}
+
+.month-select {
+  flex: 2;
+  min-width: 0;
+}
+
+.year-select {
+  flex: 1;
+  min-width: 80px;
+}
+
 .form-group input,
 .form-group select {
   padding: 10px 12px;
@@ -165,6 +204,25 @@
   border-radius: 6px;
   font-size: 14px;
   transition: border-color 0.2s ease;
+  width: 100%;
+}
+
+/* Clean date/month inputs - let browser handle the UI */
+.clean-date-input {
+  background: white;
+  font-family: inherit;
+}
+
+/* Fix invisible calendar icon in Chrome/Brave */
+.clean-date-input::-webkit-calendar-picker-indicator {
+  filter: invert(0.5) brightness(0.8);
+  cursor: pointer;
+  padding: 4px;
+  transition: filter 0.2s ease;
+}
+
+.clean-date-input::-webkit-calendar-picker-indicator:hover {
+  filter: invert(0.3) brightness(0.6);
 }
 
 .form-group input:focus,

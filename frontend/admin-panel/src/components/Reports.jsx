@@ -9,9 +9,11 @@ const Reports = () => {
   
   // Form state for generating reports
   const [reportForm, setReportForm] = useState({
-    type: 'weekly',
-    period_start: '',
-    period_end: ''
+    type: 'daily',
+    selectedDate: '',      // dla daily
+    selectedMonth: '',     // dla monthly
+    period_start: '',      // auto-generated
+    period_end: ''         // auto-generated
   });
 
   // Load quick stats on component mount
@@ -19,23 +21,39 @@ const Reports = () => {
     loadQuickStats();
   }, []);
 
-  const loadQuickStats = async (customStart = null, customEnd = null) => {
+  const loadQuickStats = async (periodType = '30days', customEnd = null) => {
     try {
       setLoading(true);
       setError('');
       
-      // Jeśli nie podano dat, użyj ostatnich 30 dni (więcej niż 7)
       let url = '/api/reports/stats';
-      if (customStart && customEnd) {
-        url += `?start=${customStart}&end=${customEnd}`;
-      } else {
-        // Ostatnie 30 dni jako fallback
-        const endDate = new Date();
-        const startDate = new Date();
-        startDate.setDate(endDate.getDate() - 30);
+      let startDate, endDate;
+      
+      // Calculate dates based on period type
+      if (periodType === 'all') {
+        // Wszystkie zamówienia - bardzo szeroki zakres
+        startDate = '2020-01-01';
+        endDate = new Date().toISOString().split('T')[0];
+      } else if (periodType === 'year') {
+        // Aktualny rok
+        const currentYear = new Date().getFullYear();
+        startDate = `${currentYear}-01-01`;
+        endDate = `${currentYear}-12-31`;
+      } else if (periodType === '30days') {
+        // Ostatnie 30 dni
+        const end = new Date();
+        const start = new Date();
+        start.setDate(end.getDate() - 30);
         
-        url += `?start=${startDate.toISOString().split('T')[0]}&end=${endDate.toISOString().split('T')[0]}`;
+        startDate = start.toISOString().split('T')[0];
+        endDate = end.toISOString().split('T')[0];
+      } else {
+        // Legacy support - gdy podano konkretne daty
+        startDate = periodType;
+        endDate = customEnd;
       }
+      
+      url += `?start=${startDate}&end=${endDate}`;
       
       const response = await fetch(url, {
         headers: {
@@ -50,9 +68,25 @@ const Reports = () => {
       const data = await response.json();
       setStats(data);
       
+      // Informacja o wybranym okresie
+      let periodInfo = '';
+      if (periodType === 'all') {
+        periodInfo = 'wszystkich zamówień w historii';
+      } else if (periodType === 'year') {
+        periodInfo = `zamówień z ${new Date().getFullYear()} roku`;
+      } else if (periodType === '30days') {
+        periodInfo = 'zamówień z ostatnich 30 dni';
+      } else {
+        periodInfo = `zamówień z okresu ${startDate} - ${endDate}`;
+      }
+      
       // Jeśli brak danych, pokaż informację
       if (data.total_orders === 0) {
-        setError('Brak zamówień w wybranym okresie. Spróbuj wybrać starsze daty.');
+        setError(`Brak ${periodInfo}. Sprawdź czy w bazie są jakiekolwiek zamówienia.`);
+      } else {
+        // Pokaż info o okresie jako success
+        setSuccess(`Znaleziono ${data.total_orders} ${periodInfo} na łączną kwotę ${data.total_amount.toFixed(2)} zł`);
+        setTimeout(() => setSuccess(''), 3000); // Auto-hide po 3 sekundach
       }
       
     } catch (err) {
@@ -64,10 +98,46 @@ const Reports = () => {
   };
 
   const handleInputChange = (e) => {
-    setReportForm({
-      ...reportForm,
-      [e.target.name]: e.target.value
+    const { name, value } = e.target;
+    
+    setReportForm(prev => {
+      const newForm = { ...prev, [name]: value };
+      
+      // Auto-generate period_start and period_end based on type and selection
+      if (name === 'type' || name === 'selectedDate' || name === 'selectedMonth') {
+        const { start, end } = calculateDateRange(
+          name === 'type' ? value : newForm.type,
+          name === 'selectedDate' ? value : newForm.selectedDate,
+          name === 'selectedMonth' ? value : newForm.selectedMonth
+        );
+        
+        newForm.period_start = start;
+        newForm.period_end = end;
+      }
+      
+      return newForm;
     });
+  };
+
+  // Calculate start and end dates based on type and selection
+  const calculateDateRange = (type, selectedDate, selectedMonth) => {
+    let start = '';
+    let end = '';
+    
+    if (type === 'daily' && selectedDate) {
+      start = selectedDate;
+      end = selectedDate;
+    } else if (type === 'monthly' && selectedMonth) {
+      // selectedMonth format: "2025-10"
+      const [year, month] = selectedMonth.split('-');
+      start = `${year}-${month}-01`;
+      
+      // Last day of month
+      const lastDay = new Date(year, month, 0).getDate();
+      end = `${year}-${month}-${lastDay.toString().padStart(2, '0')}`;
+    }
+    
+    return { start, end };
   };
 
   const generateReport = async (e) => {
@@ -108,16 +178,18 @@ const Reports = () => {
     }
   };
 
-  // Set default dates (last 7 days)
+  // Set default values
   useEffect(() => {
-    const endDate = new Date();
-    const startDate = new Date();
-    startDate.setDate(endDate.getDate() - 7);
+    const today = new Date();
+    const currentMonth = today.toISOString().slice(0, 7); // "2025-11"
+    const currentDate = today.toISOString().split('T')[0];  // "2025-11-09"
     
     setReportForm(prev => ({
       ...prev,
-      period_start: startDate.toISOString().split('T')[0],
-      period_end: endDate.toISOString().split('T')[0]
+      selectedDate: currentDate,
+      selectedMonth: currentMonth, // "2025-11" będzie pasować do opcji "Listopad 2025"
+      period_start: currentDate,
+      period_end: currentDate
     }));
   }, []);
 
@@ -151,21 +223,21 @@ const Reports = () => {
           <div className="period-buttons">
             <button 
               className="period-btn" 
-              onClick={() => loadQuickStats('2025-10-01', '2025-10-31')}
+              onClick={() => loadQuickStats('all', null)}
             >
-              Październik 2025
+              📊 Wszystkie
             </button>
             <button 
               className="period-btn" 
-              onClick={() => loadQuickStats('2025-10-20', '2025-10-27')}
+              onClick={() => loadQuickStats('year', null)}
             >
-              20-27.10.2025
+              📅 W tym roku
             </button>
             <button 
               className="period-btn" 
-              onClick={() => loadQuickStats()}
+              onClick={() => loadQuickStats('30days', null)}
             >
-              Ostatnie 30 dni
+              📈 Ostatnie 30 dni
             </button>
           </div>
           {loading && !stats ? (
@@ -223,41 +295,61 @@ const Reports = () => {
                 disabled={loading}
               >
                 <option value="daily">Dzienny</option>
-                <option value="weekly">Tygodniowy</option>
                 <option value="monthly">Miesięczny</option>
               </select>
             </div>
 
-            <div className="form-group">
-              <label htmlFor="period-start">Data początkowa:</label>
-              <input
-                type="date"
-                id="period-start"
-                name="period_start"
-                value={reportForm.period_start}
-                onChange={handleInputChange}
-                required
-                disabled={loading}
-              />
-            </div>
+            {/* Conditional inputs based on report type */}
+            {reportForm.type === 'daily' && (
+              <div className="form-group">
+                <label htmlFor="selected-date">Wybierz dzień:</label>
+                <input
+                  type="date"
+                  id="selected-date"
+                  name="selectedDate"
+                  value={reportForm.selectedDate}
+                  onChange={handleInputChange}
+                  required
+                  disabled={loading}
+                  className="clean-date-input"
+                />
+              </div>
+            )}
 
-            <div className="form-group">
-              <label htmlFor="period-end">Data końcowa:</label>
-              <input
-                type="date"
-                id="period-end"
-                name="period_end"
-                value={reportForm.period_end}
-                onChange={handleInputChange}
-                required
-                disabled={loading}
-              />
-            </div>
+            {reportForm.type === 'monthly' && (
+              <div className="form-group">
+                <label htmlFor="selected-month">Wybierz miesiąc:</label>
+                <input
+                  type="month"
+                  id="selected-month"
+                  name="selectedMonth"
+                  value={reportForm.selectedMonth}
+                  onChange={handleInputChange}
+                  required
+                  disabled={loading}
+                  className="clean-date-input"
+                />
+              </div>
+            )}
+
+            {/* Show calculated period for clarity */}
+            {reportForm.period_start && reportForm.period_end && (
+              <div className="calculated-period">
+                <small>
+                  📅 Okres raportu: <strong>
+                    {reportForm.period_start === reportForm.period_end 
+                      ? reportForm.period_start
+                      : `${reportForm.period_start} - ${reportForm.period_end}`
+                    }
+                  </strong>
+                </small>
+              </div>
+            )}
 
             <button 
               type="submit" 
               className="generate-btn"
-              disabled={loading}
+              disabled={loading || !reportForm.period_start}
             >
               {loading ? 'Generowanie...' : '📄 Generuj raport Excel'}
             </button>
