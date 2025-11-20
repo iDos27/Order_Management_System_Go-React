@@ -94,15 +94,7 @@ podman exec -i postgres-orders psql -U postgres -d orders_management < services/
 **2. Auth Service DB:**
 
 ```bash
-podman exec -it postgres-auth psql -U postgres -d auth_service -c "
-CREATE TABLE IF NOT EXISTS users (
-    id SERIAL PRIMARY KEY,
-    email VARCHAR(255) UNIQUE NOT NULL,
-    password_hash VARCHAR(255) NOT NULL,
-    role VARCHAR(50) NOT NULL DEFAULT 'customer',
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);"
+podman exec -i postgres-auth psql -U postgres -d auth_service < services/auth-service/migrations/create_tables.sql
 ```
 
 **3. Raport Service DB:**
