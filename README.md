@@ -1,357 +1,305 @@
-# System Obsługi Realizacji Zamówień
+# System Obsługi Realizacji Zamówień - Dokumentacja Techniczna
 
->  System zarządzania zamówieniami z wykorzystaniem technologii **React.js** oraz **Go**
+> **Dokumentacja Referencyjna do Pracy Inżynierskiej**
+>
+> Ten dokument stanowi techniczny opis implementacji systemu, architektury oraz kluczowych rozwiązań programistycznych.
 
-## Architektura Systemu
+---
 
-```
-┌─────────────────┐    ┌─────────────────┐
-│   Frontend      │    │   Admin Panel   │
-│   (React.js)    │    │   (Warehouse)   │
-└─────────┬───────┘    └─────────┬───────┘
-          │                      │
-          └──────────┬───────────┘
-                     │
-            ┌────────▼────────┐
-            │   Backend API   │
-            │    (Go/Gin)     │
-            └─────────────────┘
-                     │
-            ┌────────▼────────┐
-            │   PostgreSQL    │
-            │   + WebSocket   │
-            └─────────────────┘
-```
+## 1. Cel i Opis Systemu
 
-## Aktualna Funkcjonalność
+Celem projektu jest stworzenie rozproszonego systemu obsługi zamówień magazynowych, który umożliwia:
 
-### **Backend (Go + Gin)**
-- **REST API** - CRUD operacje na zamówieniach
-- **WebSocket** - Real-time aktualizacje statusów
-- **PostgreSQL** - Przechowywanie danych zamówień
-- **CORS** - Obsługa żądań z frontendu
+- **Czas rzeczywisty**: Natychmiastową synchronizację statusów zamówień między pracownikami (WebSocket).
+- **Skalowalność**: Podział na niezależne mikroserwisy (Auth, Order, Raport).
+- **Bezpieczeństwo**: Pełne uwierzytelnianie oparte na tokenach JWT.
+- **Analitykę**: Generowanie raportów w formatach biznesowych (Excel).
 
-### **Frontend (React + Vite)**
-- **Admin Panel** - Kanban board dla pracowników magazynu
-- **Real-time Updates** - Synchronizacja między kartami przeglądarki
-- **Workflow System** - Logiczne przejścia między statusami
+---
 
-### **Funkcje Biznesowe**
-- Przeglądanie wszystkich zamówień w układzie Kanban
-- Zmiana statusów zamówień (new → confirmed → shipped → delivered)
-- Możliwość anulowania zamówień na każdym etapie
-- Real-time powiadomienia o zmianach dla wszystkich użytkowników
-- Szczegółowy widok pojedynczego zamówienia
+## 2. Stack Technologiczny
 
-## Stack Technologiczny
+### Backend (Go)
 
-### **Backend**
+Wykorzystano język Go ze względu na wysoką wydajność i natywną obsługę współbieżności.
+
 ```go
-// Główne zależności Go
-github.com/gin-gonic/gin           // Framework web REST API
-github.com/lib/pq                  // Driver PostgreSQL
-github.com/joho/godotenv           // Zmienne środowiskowe z .env
-github.com/gorilla/websocket       // WebSocket real-time communication
-github.com/gin-contrib/cors        // Cross-Origin Resource Sharing
+// Główne zależności (go.mod)
+github.com/gin-gonic/gin           // Framework web REST API (v1.9.1)
+github.com/lib/pq                  // Driver PostgreSQL (v1.10.9)
+github.com/joho/godotenv           // Obsługa zmiennych środowiskowych .env (v1.5.1)
+github.com/gorilla/websocket       // Implementacja protokołu WebSocket (v1.5.1)
+github.com/gin-contrib/cors        // Middleware CORS (v1.5.0)
+github.com/golang-jwt/jwt/v5       // Obsługa tokenów JWT (v5.2.0)
+github.com/xuri/excelize/v2        // Generowanie plików Excel (v2.8.0)
 ```
 
-### **Frontend**
+### Frontend (React)
+
+Aplikacja kliencka typu SPA (Single Page Application) zbudowana w oparciu o nowoczesny stack Reacta.
+
 ```json
-// Główne zależności React
-"react": "^18.0.0"                 // Biblioteka UI
-"vite": "^4.0.0"                   // Build tool i dev server
-"axios": "^1.0.0"                  // HTTP client dla API calls
+// Główne zależności (package.json)
+"react": "^18.2.0",                // Biblioteka UI
+"react-dom": "^18.2.0",            // Renderowanie DOM
+"react-router-dom": "^6.22.0",     // Routing po stronie klienta
+"vite": "^5.1.0",                  // Build tool i serwer deweloperski (szybszy niż CRA)
+"axios": "^1.6.7"                  // Klient HTTP
 ```
 
-### **Baza Danych**
-- **PostgreSQL 17** - Relacyjna baza danych
-- **Tabele**: `orders`, `order_items`
-- **Docker container** - Łatwe uruchomienie lokalnie
+### Baza Danych i Infrastruktura
 
-## Struktura Projektu
+- **PostgreSQL 17**: Główny silnik bazy danych.
+- **Podman**: Konteneryzacja usług i baz danych.
+- **Nginx**: API Gateway i Reverse Proxy.
+
+---
+
+## 3. Architektura Systemu
+
+System oparty jest na architekturze mikroserwisów, gdzie każdy moduł odpowiada za jedną domenę biznesową. Całość komunikacji zewnętrznej przechodzi przez API Gateway.
 
 ```
-Order_Management_System/
-├── backend/                       # Backend Go (Orders Service)
-│   ├── cmd/server/main.go        # Entry point aplikacji
-│   ├── internal/
-│   │   ├── database/             # Połączenie z bazą danych
-│   │   ├── handlers/             # REST API endpoints
-│   │   ├── models/               # Struktury danych
-│   │   └── websocket/            # WebSocket hub i komunikacja
-│   ├── migrations/               # SQL skrypty dla bazy
-│   ├── go.mod                    # Zależności Go
-│   └── .env                      # Konfiguracja (DATABASE_URL, PORT)
-├── services/                     # Mikroservices
-│   ├── auth-service/             # ✅ Auth Service (JWT, bcrypt)
-│   │   ├── cmd/server/main.go    # Entry point
-│   │   ├── internal/
-│   │   │   ├── database/         # Połączenie z auth DB
-│   │   │   ├── handlers/         # Register/Login endpoints  
-│   │   │   └── models/           # User, LoginRequest, RegisterRequest
-│   │   └── go.mod                # Zależności Auth Service
-│   ├── notification-service/     # 🔄 W planach
-│   └── analytics-service/        # 🔄 W planach
-├── frontend/admin-panel/         # Frontend React
-│   ├── src/
-│   │   ├── components/           # Komponenty React (OrderCard)
-│   │   ├── hooks/                # Custom hooks (useWebSocket)
-│   │   ├── services/             # API client (axios)
-│   │   ├── App.jsx               # Główny komponent
-│   │   └── App.css               # Style CSS
-│   ├── package.json              # Zależności npm
-│   └── vite.config.js            # Konfiguracja Vite
-├── kubernetes/                   # Manifesty K8s (przyszłość)
-├── README.md                     # Ta dokumentacja
-└── TODO.md                       # Plan rozwoju mikrousług
+      [Klient React] <---(HTTP/WS)---> [Nginx Gateway :80]
+                                            |
+        ┌───────────────────────────────────┼───────────────────────────────────┐
+        |                                   |                                   |
+  [Auth Service :8081]             [Order Service :8080]              [Raport Service :8082]
+        |                                   |                                   |
+  [DB: auth_service]               [DB: orders_management]            [DB: raports_management]
 ```
 
-## Szczegóły Implementacji
+---
 
-### **Backend - Kluczowe Komponenty**
+## 4. Backend - Kluczowe Implementacje (Go)
 
-#### `models/order.go`
+### 4.1. Auth Service - Generowanie Tokena JWT
+
+Implementacja bezpiecznego, bezstanowego uwierzytelniania. Token zawiera ID użytkownika, email i rolę, co pozwala na weryfikację uprawnień bez odpytywania bazy przy każdym żądaniu.
+
+**Plik:** `services/auth-service/internal/handlers/handlers.go`
+
 ```go
-type OrderStatus string
-const (
-    StatusNew       OrderStatus = "new"        // Nowe zamówienie
-    StatusConfirmed OrderStatus = "confirmed"  // Potwierdzone
-    StatusShipped   OrderStatus = "shipped"    // Wysłane
-    StatusDelivered OrderStatus = "delivered"  // Dostarczone
-    StatusCancelled OrderStatus = "cancelled"  // Anulowane
-)
+// generateJWTToken tworzy podpisany token ważny przez 24 godziny
+func (h *AuthHandler) generateJWTToken(user models.User) (string, error) {
+    claims := jwt.MapClaims{
+        "user_id": user.ID,
+        "email":   user.Email,
+        "role":    user.Role,
+        "exp":     time.Now().Add(24 * time.Hour).Unix(),
+    }
+    token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 
-type Order struct {
-    ID            int       `json:"id" db:"id"`
-    CustomerName  string    `json:"customer_name" db:"customer_name"`
-    CustomerEmail string    `json:"customer_email" db:"customer_email"`
-    Status        string    `json:"status" db:"status"`
-    TotalAmount   float64   `json:"total_amount" db:"total_amount"`
-    CreatedAt     time.Time `json:"created_at" db:"created_at"`
-    UpdatedAt     time.Time `json:"updated_at" db:"updated_at"`
+    secret := os.Getenv("JWT_SECRET")
+    return token.SignedString([]byte(secret))
 }
 ```
 
-#### `websocket/websocket.go`
+### 4.2. Order Service - WebSocket Hub (Pub/Sub)
+
+Hub zarządza aktywnymi połączeniami WebSocket. Wykorzystuje kanały Go (`chan`) do bezpiecznej komunikacji między wątkami (goroutines). Wzorzec ten pozwala na efektywne rozsyłanie powiadomień do wielu klientów jednocześnie.
+
+**Plik:** `services/order-service/internal/websocket/websocket.go`
+
 ```go
-// Hub - zarządza wszystkimi połączeniami WebSocket
 type Hub struct {
-    Clients    map[*Client]bool  // Aktywni klienci
-    Register   chan *Client      // Kanał rejestracji
-    Unregister chan *Client      // Kanał wyrejestrowania  
-    Broadcast  chan Message      // Kanał broadcast
+    Clients    map[*Client]bool  // Mapa aktywnych klientów (Set)
+    Register   chan *Client      // Kanał rejestracji nowych połączeń
+    Unregister chan *Client      // Kanał zamykania połączeń
+    Broadcast  chan Message      // Kanał rozgłoszeniowy
 }
 
-// BroadcastOrderUpdate - wysyła aktualizację do wszystkich klientów
-func (h *Hub) BroadcastOrderUpdate(orderID int, newStatus string, updatedBy string)
+// Główna pętla obsługująca zdarzenia w Hubie
+func (h *Hub) Run() {
+    for {
+        select {
+        case client := <-h.Register:
+            h.Clients[client] = true
+        case client := <-h.Unregister:
+            if _, ok := h.Clients[client]; ok {
+                delete(h.Clients, client)
+                close(client.Send)
+            }
+        case message := <-h.Broadcast:
+            // Rozsyłanie wiadomości do wszystkich połączonych klientów
+            for client := range h.Clients {
+                select {
+                case client.Send <- message:
+                default:
+                    close(client.Send)
+                    delete(h.Clients, client)
+                }
+            }
+        }
+    }
+}
 ```
 
-#### `handlers/orders.go`
+### 4.3. Order Service - Tworzenie Zamówienia z Powiadomieniem
+
+Handler REST API, który po poprawnym zapisaniu zamówienia w bazie danych, natychmiast wysyła powiadomienie przez WebSocket do wszystkich podłączonych klientów.
+
+**Plik:** `services/order-service/internal/handlers/orders.go`
+
 ```go
-// REST API endpoints
-GET    /api/orders           // Lista wszystkich zamówień
-GET    /api/orders/:id       // Pojedyncze zamówienie
-POST   /api/orders           // Nowe zamówienie
-PATCH  /api/orders/:id/status // Zmiana statusu
+func (h *OrderHandler) CreateOrder(c *gin.Context) {
+    var order models.Order
+    if err := c.ShouldBindJSON(&order); err != nil {
+        c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid JSON data"})
+        return
+    }
+
+    // 1. Zapis do bazy danych (transakcyjność zapewniona przez PostgreSQL)
+    err := h.db.QueryRow(`
+        INSERT INTO orders (customer_name, customer_email, source, status, total_amount, created_at, updated_at)
+        VALUES ($1, $2, $3, $4, $5, NOW(), NOW())
+        RETURNING id, created_at, updated_at
+        `, order.CustomerName, order.CustomerEmail, order.Source, models.StatusNew, order.TotalAmount).
+        Scan(&order.ID, &order.CreatedAt, &order.UpdatedAt)
+
+    if err != nil {
+        c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create order"})
+        return
+    }
+
+    // 2. Real-time Broadcast: Powiadomienie wszystkich klientów o nowym zamówieniu
+    h.hub.BroadcastOrderUpdate(order.ID, string(models.StatusNew), "system")
+
+    c.JSON(http.StatusCreated, order)
+}
 ```
 
-### **Frontend - Kluczowe Komponenty**
+---
 
-#### `hooks/useWebSocket.js`
+## 5. Frontend - Implementacja React
+
+### 5.1. Globalny Stan Autoryzacji (Context API)
+
+Wykorzystanie `React Context` do przechowywania stanu zalogowanego użytkownika w całej aplikacji. Pozwala to uniknąć "prop drilling" (przekazywania propsów przez wiele poziomów).
+
+**Plik:** `frontend/admin-panel/src/context/AuthContext.jsx`
+
 ```javascript
-// Custom hook dla WebSocket connection
+export const AuthProvider = ({ children }) => {
+  const [user, setUser] = useState(null);
+  const [token, setToken] = useState(null);
+
+  // Automatyczne przywracanie sesji po odświeżeniu strony
+  useEffect(() => {
+    const storedToken = localStorage.getItem("token");
+    const storedUser = localStorage.getItem("user");
+
+    if (storedToken && storedUser) {
+      setToken(storedToken);
+      setUser(JSON.parse(storedUser));
+    }
+  }, []);
+
+  const login = async (credentials) => {
+    const response = await api.login(credentials);
+    if (response.token) {
+      // Zapisanie tokena w localStorage dla persystencji
+      localStorage.setItem("token", response.token);
+      localStorage.setItem("user", JSON.stringify(response.user));
+      setToken(response.token);
+      setUser(response.user);
+      return { success: true };
+    }
+  };
+
+  return (
+    <AuthContext.Provider value={{ user, token, login }}>
+      {children}
+    </AuthContext.Provider>
+  );
+};
+```
+
+### 5.2. Obsługa WebSocket (Custom Hook)
+
+Wydzielenie logiki WebSocket do osobnego hooka `useWebSocket` zapewnia czystość kodu komponentów i łatwość ponownego użycia.
+
+**Plik:** `frontend/admin-panel/src/hooks/useWebSocket.js`
+
+```javascript
 const useWebSocket = (url) => {
   const [lastMessage, setLastMessage] = useState(null);
-  // Automatyczne połączenie, obsługa wiadomości, cleanup
-}
+  const ws = useRef(null);
+
+  useEffect(() => {
+    ws.current = new WebSocket(url);
+
+    ws.current.onmessage = (event) => {
+      const data = JSON.parse(event.data);
+      console.log("Otrzymano wiadomość:", data);
+      setLastMessage(data); // Aktualizacja stanu wymusi re-render komponentu używającego hooka
+    };
+
+    return () => {
+      if (ws.current) ws.current.close(); // Sprzątanie połączenia przy odmontowaniu
+    };
+  }, [url]);
+
+  return { lastMessage };
+};
 ```
 
-#### `App.jsx`
+### 5.3. Aktualizacja UI w Czasie Rzeczywistym
+
+Komponent `OrderManagement` reaguje na zmiany w `lastMessage` z hooka WebSocket, aktualizując listę zamówień bez konieczności odświeżania strony.
+
+**Plik:** `frontend/admin-panel/src/components/OrderManagement.jsx`
+
 ```javascript
-// Główny komponent z Kanban board
-const App = () => {
-  // Real-time synchronizacja przez WebSocket
+const OrderManagement = () => {
+  const [orders, setOrders] = useState([]);
+  const { lastMessage } = useWebSocket("ws://localhost/ws");
+
+  // Efekt nasłuchujący na nowe wiadomości WebSocket
   useEffect(() => {
-    if (lastMessage && lastMessage.type === 'order_update') {
-      // Aktualizacja lokalnego stanu bez przeładowania
+    if (lastMessage && lastMessage.type === "order_update") {
+      const { order_id, new_status } = lastMessage.payload;
+
+      setOrders((prevOrders) => {
+        const orderExists = prevOrders.find((o) => o.id === order_id);
+
+        if (orderExists) {
+          // Aktualizacja statusu istniejącego zamówienia (optymistyczna aktualizacja UI)
+          return prevOrders.map((order) =>
+            order.id === order_id ? { ...order, status: new_status } : order
+          );
+        } else {
+          // Nowe zamówienie - pobranie świeżej listy
+          fetchOrders();
+          return prevOrders;
+        }
+      });
+
+      alert(`Aktualizacja zamówienia #${order_id}: ${new_status}`);
     }
   }, [lastMessage]);
-}
+
+  // ... renderowanie Kanban Board
+};
 ```
 
-## Uruchomienie Projektu
+---
 
-### **1. Uruchomienie Bazy Danych**
-```bash
-# PostgreSQL w Docker
-docker run --name postgres-orders \
-  -e POSTGRES_USER=postgres \
-  -e POSTGRES_PASSWORD=password123 \
-  -e POSTGRES_DB=orders_management \
-  -p 5432:5432 \
-  --restart always \
-  -d postgres:17
-
-# Wykonanie migracji
-docker exec -i postgres-orders psql -U postgres -d orders_management < backend/migrations/create_tables.sql
-```
-
-### **2. Uruchomienie Backend**
-```bash
-cd backend
-go mod tidy
-go run cmd/server/main.go
-# Server dostępny na http://localhost:8080
-```
-
-### **3. Uruchomienie Frontend**
-```bash
-cd frontend/admin-panel
-npm install
-npm run dev
-# Aplikacja dostępna na http://localhost:5173
-```
-
-## Testowanie API
-
-### **Tworzenie nowego zamówienia**
-```bash
-curl -X POST http://localhost:8080/api/orders \
-  -H "Content-Type: application/json" \
-  -d '{
-    "customer_name": "Jan Kowalski",
-    "customer_email": "jan@example.com", 
-    "total_amount": 299.99
-  }'
-```
-
-### **Zmiana statusu zamówienia**
-```bash
-curl -X PATCH http://localhost:8080/api/orders/1/status \
-  -H "Content-Type: application/json" \
-  -d '{"status": "confirmed"}'
-```
-
-### **Lista wszystkich zamówień**
-```bash
-curl http://localhost:8080/api/orders
-```
-
-## WebSocket Real-Time
-
-### **Połączenie**
-```javascript
-// Frontend automatycznie łączy się z WebSocket
-const socket = new WebSocket('ws://localhost:8080/ws');
-```
-
-### **Format wiadomości**
-```json
-{
-  "type": "order_update",
-  "payload": {
-    "order_id": 1,
-    "new_status": "shipped",
-    "updated_by": "admin"
-  }
-}
-```
-
-## Konfiguracja Środowiska
-
-### **Backend (.env)**
-```env
-DATABASE_URL=postgres://postgres:password123@localhost:5432/orders_management?sslmode=disable
-SERVER_PORT=8080
-```
-
-### **Frontend (Vite)**
-```javascript
-// vite.config.js
-export default defineConfig({
-  plugins: [react()],
-  server: {
-    port: 5173
-  }
-})
-```
-
-## Mikroservices Architecture (Branch: microservices)
-
-### **Auth Service** ✅ **GOTOWY**
-- **Funkcjonalność**: Rejestracja i logowanie użytkowników z JWT tokenami
-- **Port**: 8081
-- **Baza danych**: PostgreSQL (port 5433)
-- **Endpoints**:
-  - `GET /api/v1/health` - Health check
-  - `POST /api/v1/register` - Rejestracja użytkownika
-  - `POST /api/v1/login` - Logowanie (zwraca JWT token)
-
-#### **Uruchomienie Auth Service:**
+## 6. Uruchomienie Projektu (Podman)
 
 ```bash
-# 1. Stworzenie kontenera PostgreSQL dla Auth Service
-docker run --name postgres-auth \
-  -e POSTGRES_PASSWORD=password \
-  -e POSTGRES_DB=auth_service \
-  -p 5433:5432 \
-  --restart=always \
-  -d postgres:17
+# 1. Uruchomienie baz danych i Nginx
+podman run --name postgres-orders -e POSTGRES_USER=postgres -e POSTGRES_PASSWORD=password123 -e POSTGRES_DB=orders_management -p 5432:5432 -d postgres:17
 
-# 2. Stworzenie tabeli users
-docker exec -it postgres-auth psql -U postgres -d auth_service -c "
-CREATE TABLE IF NOT EXISTS users (
-    id SERIAL PRIMARY KEY,
-    email VARCHAR(255) UNIQUE NOT NULL,
-    password_hash VARCHAR(255) NOT NULL,
-    role VARCHAR(50) NOT NULL DEFAULT 'customer',
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);"
+podman run --name postgres-auth -e POSTGRES_PASSWORD=password -e POSTGRES_DB=auth_service -p 5433:5432 -d postgres:17
 
-# 3. Uruchomienie Auth Service
-cd services/auth-service
-go run ./cmd/server
+podman run -d --name nginx-gateway --network host -v $(pwd)/nginx/nginx.conf:/etc/nginx/nginx.conf:ro nginx:alpine
+
+# 2. Uruchomienie serwisów Go (w osobnych terminalach)
+cd services/order-service && go run cmd/server/main.go
+cd services/auth-service && go run cmd/server/main.go
+cd services/raport-service && go run cmd/server/main.go
+
+# 3. Uruchomienie Frontendu
+cd frontend/admin-panel && npm run dev
 ```
-
-#### **Testowanie Auth Service:**
-
-```bash
-# Health check
-curl http://localhost:8081/api/v1/health
-# Response: {"service":"auth-service","status":"ok"}
-
-# Rejestracja użytkownika
-curl -X POST http://localhost:8081/api/v1/register \
-  -H "Content-Type: application/json" \
-  -d '{"email":"test@example.com","password":"password123","role":"employee"}'
-# Response: {"message":"User registered successfully","user_id":1}
-
-# Logowanie
-curl -X POST http://localhost:8081/api/v1/login \
-  -H "Content-Type: application/json" \
-  -d '{"email":"test@example.com","password":"password123","role":"employee"}'
-# Response: {"token":"eyJhbGciOiJIUzI1NiIs...","user":{...}}
-```
-
-## Planowany Rozwój
-
-> **Szczegóły w [TODO.md](./TODO.md)**
-
-## Informacje Techniczne
-
-### **Porty:**
-- **Backend (Orders)**: 8080
-- **Auth Service**: 8081
-- **Frontend**: 5173  
-- **PostgreSQL (Orders)**: 5432
-- **PostgreSQL (Auth)**: 5433
-- **WebSocket**: ws://localhost:8080/ws
-
-### **Statusy Zamówień:**
-1. **new** → Nowe zamówienie
-2. **confirmed** → Potwierdzone przez magazyn
-3. **shipped** → Wysłane do klienta
-4. **delivered** → Dostarczone
-5. **cancelled** → Anulowane (możliwe na każdym etapie)
-
