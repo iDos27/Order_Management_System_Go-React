@@ -60,13 +60,46 @@ Aplikacja kliencka typu SPA (Single Page Application) zbudowana w oparciu o nowo
 System oparty jest na architekturze mikroserwisów, gdzie każdy moduł odpowiada za jedną domenę biznesową. Całość komunikacji zewnętrznej przechodzi przez API Gateway.
 
 ```
-      [Klient React] <---(HTTP/WS)---> [Nginx Gateway :80]
-                                            |
-        ┌───────────────────────────────────┼───────────────────────────────────┐
-        |                                   |                                   |
-  [Auth Service :8081]             [Order Service :8080]              [Raport Service :8082]
-        |                                   |                                   |
-  [DB: auth_service]               [DB: orders_management]            [DB: raports_management]
+                                   ┌─────────────────┐
+                                   │   Admin Panel   │
+                                   │  (React :5173)  │
+                                   └────────▼────────┘
+                                            │
+                                            │
+                                            │
+                                   ┌────────▲────────┐
+                                   │    [HTTP/WS]    │
+                                   └────────▼────────┘
+                                            │
+                                   ┌────────▼────────┐
+                                   │  Nginx Gateway  │
+                                   │       :80       │
+                                   └─────────────────┘
+                                            │
+         ┌──────────────────────────────────┼───────────────────────────────────┐
+         │                                  │                                   │
+┌────────▼────────┐                ┌────────▼────────┐                 ┌────────▼────────┐
+│  Auth Service   │                │  Order Service  │                 │  Raport Service │
+│   (Go :8081)    │                │   (Go :8080)    │        ┌────────│   (Go :8083)    │
+└─────────────────┘                └─────────────────┘        │        └─────────────────┘
+         │                                  │                 │                 │
+┌────────▼────────┐                ┌────────▼────────┐        │        ┌────────▼────────┐
+│       DB        │                │       DB        │        │        │       DB        │
+│  postgres_auth  │                │  postgres_order │◄───────┘        │ postgres_raport │
+│      :5433      │                │      :5432      │                 │      :5434      │
+└─────────────────┘                └─────────────────┘                 └─────────────────┘
+                                            │
+                                   ┌────────▼────────┐
+                                   │    RabbitMQ     │
+                                   │  (Port :5672)   │
+                                   └─────────────────┘
+                                            │
+                                   ┌────────▼────────┐
+                                   │  Notification   │
+                                   │     Service     │
+                                   │   (Go :8084)    │
+                                   └─────────────────┘
+
 ```
 
 ---
