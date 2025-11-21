@@ -1,12 +1,13 @@
 package middleware
 
 import (
-	"auth-service/internal/database"
-	"auth-service/internal/models"
 	"fmt"
 	"net/http"
 	"os"
 	"strings"
+
+	"github.com/iDos27/order-management/auth-service/internal/database"
+	"github.com/iDos27/order-management/auth-service/internal/models"
 
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"

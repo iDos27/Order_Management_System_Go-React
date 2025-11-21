@@ -2,13 +2,14 @@ package main
 
 import (
 	"log"
-	"order-service/internal/database"
-	"order-service/internal/handlers"
-	"order-service/internal/websocket"
 	"os"
 
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
+
+	"github.com/iDos27/order-management/order-service/internal/database"
+	"github.com/iDos27/order-management/order-service/internal/handlers"
+	"github.com/iDos27/order-management/order-service/internal/websocket"
 )
 
 func main() {

@@ -1,13 +1,14 @@
 package handlers
 
 import (
-	"auth-service/internal/database"
-	"auth-service/internal/models"
-	"auth-service/middleware"
 	"database/sql"
 	"net/http"
 	"os"
 	"time"
+
+	"github.com/iDos27/order-management/auth-service/internal/database"
+	"github.com/iDos27/order-management/auth-service/internal/models"
+	"github.com/iDos27/order-management/auth-service/middleware"
 
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"

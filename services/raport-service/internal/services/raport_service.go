@@ -4,9 +4,10 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"raport-service/internal/database"
-	"raport-service/internal/models"
 	"time"
+
+	"github.com/iDos27/order-management/raport-service/internal/database"
+	"github.com/iDos27/order-management/raport-service/internal/models"
 
 	"github.com/xuri/excelize/v2"
 )

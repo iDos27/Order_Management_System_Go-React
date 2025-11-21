@@ -6,14 +6,14 @@ import (
 	"os"
 	"time"
 
-	"raport-service/internal/database"
-	"raport-service/internal/handlers"
-	"raport-service/internal/models"
-	"raport-service/internal/services"
-	"raport-service/middleware"
-
 	"github.com/gorilla/mux"
 	"github.com/robfig/cron/v3"
+
+	"github.com/iDos27/order-management/raport-service/internal/database"
+	"github.com/iDos27/order-management/raport-service/internal/handlers"
+	"github.com/iDos27/order-management/raport-service/internal/models"
+	"github.com/iDos27/order-management/raport-service/internal/services"
+	"github.com/iDos27/order-management/raport-service/middleware"
 )
 
 func main() {

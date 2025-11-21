@@ -1,13 +1,14 @@
 package main
 
 import (
-	"auth-service/internal/database"
-	"auth-service/internal/handlers"
-	"auth-service/middleware"
 	"log"
 	"os"
 
 	"github.com/gin-gonic/gin"
+
+	"github.com/iDos27/order-management/auth-service/internal/database"
+	"github.com/iDos27/order-management/auth-service/internal/handlers"
+	"github.com/iDos27/order-management/auth-service/middleware"
 )
 
 func main() {

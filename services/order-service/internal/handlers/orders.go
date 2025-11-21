@@ -4,9 +4,9 @@ import (
 	"net/http"
 	"strconv"
 
-	"order-service/internal/database"
-	"order-service/internal/models"
-	"order-service/internal/websocket"
+	"github.com/iDos27/order-management/order-service/internal/database"
+	"github.com/iDos27/order-management/order-service/internal/models"
+	"github.com/iDos27/order-management/order-service/internal/websocket"
 
 	"github.com/gin-gonic/gin"
 )

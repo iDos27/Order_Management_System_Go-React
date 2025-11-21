@@ -1,4 +1,4 @@
-module order-service
+module github.com/iDos27/order-management/order-service
 
 go 1.24.7
 

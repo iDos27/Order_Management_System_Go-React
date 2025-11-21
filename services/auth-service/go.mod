@@ -1,4 +1,4 @@
-module auth-service
+module github.com/iDos27/order-management/auth-service
 
 go 1.24.7
 

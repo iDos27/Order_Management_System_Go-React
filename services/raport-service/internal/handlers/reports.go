@@ -4,9 +4,10 @@ import (
 	"encoding/json"
 	"log"
 	"net/http"
-	"raport-service/internal/models"
-	"raport-service/internal/services"
 	"time"
+
+	"github.com/iDos27/order-management/raport-service/internal/models"
+	"github.com/iDos27/order-management/raport-service/internal/services"
 )
 
 type ReportsHandler struct {
