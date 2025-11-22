@@ -138,18 +138,16 @@ func readPump(client *Client, hub *Hub) {
 func writePump(client *Client) {
 	defer client.Conn.Close()
 
-	for {
-		select {
-		case message, ok := <-client.Send:
-			if !ok {
-				client.Conn.WriteMessage(websocket.CloseMessage, []byte{})
-				return
-			}
-
-			if err := client.Conn.WriteJSON(message); err != nil {
-				log.Printf("Błąd wysyłania: %v", err)
-				return
-			}
+	// Pętla range automatycznie:
+	// 1. Czeka na wiadomość z kanału client.Send
+	// 2. Przerywa pętlę, gdy kanał zostanie zamknięty (w Hubie przez close(client.Send))
+	for message := range client.Send {
+		if err := client.Conn.WriteJSON(message); err != nil {
+			log.Printf("Błąd wysyłania: %v", err)
+			return
 		}
 	}
+
+	// Ten kod wykona się tylko, gdy kanał client.Send zostanie zamknięty
+	client.Conn.WriteMessage(websocket.CloseMessage, []byte{})
 }

@@ -49,9 +49,6 @@ const OrderManagement = () => {
         }
         return prev;
       });
-      
-      const statusText = getStatusText(new_status);
-      alert(`Zamówienie #${order_id} zmieniono na: ${statusText}`);
     }
   }, [lastMessage]);
 
