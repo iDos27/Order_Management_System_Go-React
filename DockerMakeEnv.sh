@@ -50,10 +50,33 @@ cleanup_container() {
 cleanup_container "postgres-orders"
 cleanup_container "postgres-auth"
 cleanup_container "postgres-raports"
+cleanup_container "rabbitmq"
 cleanup_container "nginx-gateway"
 
 # ==========================================
-# 2. URUCHOMIENIE BAZ DANYCH
+# 2. URUCHOMIENIE RABBITMQ
+# ==========================================
+print_info "🐰 Uruchamianie RabbitMQ..."
+
+docker run --name rabbitmq \
+    -e RABBITMQ_DEFAULT_USER=guest \
+    -e RABBITMQ_DEFAULT_PASS=guest \
+    -p 5672:5672 \
+    -p 15672:15672 \
+    -d rabbitmq:3-management
+
+if [ $? -eq 0 ]; then
+    print_success "✓ RabbitMQ uruchomiony (AMQP: 5672, Management UI: 15672)"
+else
+    print_error "✗ Błąd uruchamiania RabbitMQ"
+    exit 1
+fi
+
+print_info "⏳ Oczekiwanie na uruchomienie RabbitMQ (5 sekund)..."
+sleep 5
+
+# ==========================================
+# 3. URUCHOMIENIE BAZ DANYCH
 # ==========================================
 print_info "🐘 Uruchamianie baz danych PostgreSQL..."
 
@@ -94,7 +117,7 @@ print_info "Starting postgres-raports..."
 docker run --name postgres-raports \
     -e POSTGRES_USER=postgres \
     -e POSTGRES_PASSWORD=password123 \
-    -e POSTGRES_DB=raports_management \
+    -e POSTGRES_DB=reports_management \
     -p 5434:5432 \
     -d postgres:17
 
@@ -106,11 +129,11 @@ else
 fi
 
 # Czekamy aż bazy będą gotowe
-print_info "Oczekiwanie na gotowość baz danych (10 sekund)..."
-sleep 10
+print_info "⏳ Oczekiwanie na gotowość baz danych (15 sekund)..."
+sleep 15
 
 # ==========================================
-# 3. MIGRACJE BAZ DANYCH
+# 4. MIGRACJE BAZ DANYCH
 # ==========================================
 print_info "Uruchamianie migracji baz danych..."
 
@@ -141,28 +164,28 @@ else
 fi
 
 # Migracja Raports
-print_info "Migracja bazy raports_management..."
+print_info "Migracja bazy reports_management..."
 if [ -f "$PROJECT_ROOT/services/raport-service/migration/create_tables.sql" ]; then
-    docker exec -i postgres-raports psql -U postgres -d raports_management < "$PROJECT_ROOT/services/raport-service/migration/create_tables.sql"
+    docker exec -i postgres-raports psql -U postgres -d reports_management < "$PROJECT_ROOT/services/raport-service/migration/create_tables.sql"
     if [ $? -eq 0 ]; then
-        print_success "✓ Migracja raports_management zakończona"
+        print_success "✓ Migracja reports_management zakończona"
     else
-        print_error "✗ Błąd migracji raports_management"
+        print_error "✗ Błąd migracji reports_management"
     fi
 else
     print_warning "Plik migracji raports nie znaleziony"
 fi
 
 # ==========================================
-# 4. URUCHOMIENIE NGINX GATEWAY
+# 5. URUCHOMIENIE NGINX GATEWAY
 # ==========================================
-print_info "Uruchamianie Nginx Gateway..."
+print_info "🌐 Uruchamianie Nginx Gateway..."
 
 if [ -f "$PROJECT_ROOT/nginx/nginx.conf" ]; then
     docker run -d \
         --name nginx-gateway \
         --network host \
-        -v "$PROJECT_ROOT/nginx/nginx.conf:/etc/nginx/nginx.conf:ro" \
+        -v "$PROJECT_ROOT/nginx/nginx.conf:/etc/nginx/nginx.conf:Z" \
         nginx:alpine
     
     if [ $? -eq 0 ]; then
@@ -177,7 +200,7 @@ else
 fi
 
 # ==========================================
-# 5. URUCHOMIENIE SERWISÓW GO W TERMINALACH
+# 6. URUCHOMIENIE SERWISÓW GO W TERMINALACH
 # ==========================================
 print_info "Uruchamianie serwisów Go w osobnych terminalach..."
 
@@ -287,10 +310,48 @@ fi
 
 # Uruchomienie wszystkich serwisów
 launch_service "Auth Service" "services/auth-service" "8081"
+sleep 5
+
+# Rejestracja użytkowników testowych
+print_info "👤 Rejestracja użytkowników testowych..."
+sleep 2  # Dodatkowy czas na uruchomienie auth-service
+
+# Rejestracja admina
+curl -s -X POST http://localhost:8081/api/v1/register \
+    -H "Content-Type: application/json" \
+    -d '{
+        "email": "admin@test.com",
+        "password": "admin123",
+        "role": "admin"
+    }' > /dev/null 2>&1
+
+if [ $? -eq 0 ]; then
+    print_success "✓ Admin zarejestrowany (admin@test.com / admin123)"
+else
+    print_warning "Admin może już istnieć lub auth-service jeszcze się uruchamia"
+fi
+
+# Rejestracja pracownika
+curl -s -X POST http://localhost:8081/api/v1/register \
+    -H "Content-Type: application/json" \
+    -d '{
+        "email": "gosc@test.com",
+        "password": "gosc123",
+        "role": "employee"
+    }' > /dev/null 2>&1
+
+if [ $? -eq 0 ]; then
+    print_success "✓ Pracownik zarejestrowany (gosc@test.com / gosc123)"
+else
+    print_warning "Pracownik może już istnieć"
+fi
+
 sleep 2
 launch_service "Order Service" "services/order-service" "8080"
 sleep 2
 launch_service "Raport Service" "services/raport-service" "8083"
+sleep 2
+launch_service "Notification Service" "services/notification-service" "N/A"
 sleep 2
 
 # Uruchomienie Frontendu
@@ -332,7 +393,7 @@ else
 fi
 
 # ==========================================
-# 6. PODSUMOWANIE
+# 7. PODSUMOWANIE
 # ==========================================
 sleep 3
 echo ""
@@ -344,12 +405,14 @@ print_info "📦 Kontenery:"
 print_info "  • postgres-orders   → localhost:5432"
 print_info "  • postgres-auth     → localhost:5433"
 print_info "  • postgres-raports  → localhost:5434"
+print_info "  • rabbitmq          → localhost:5672 (AMQP), localhost:15672 (UI)"
 print_info "  • nginx-gateway     → localhost:80"
 echo ""
 print_info "🔧 Serwisy Go:"
-print_info "  • Auth Service      → localhost:8081"
-print_info "  • Order Service     → localhost:8080"
-print_info "  • Raport Service    → localhost:8083"
+print_info "  • Auth Service         → localhost:8081"
+print_info "  • Order Service        → localhost:8080"
+print_info "  • Raport Service       → localhost:8083"
+print_info "  • Notification Service → RabbitMQ Consumer"
 echo ""
 print_info "🌐 Frontend:"
 print_info "  • React Admin Panel → localhost:5173"

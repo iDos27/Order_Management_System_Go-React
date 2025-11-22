@@ -28,7 +28,7 @@ print_info "🛑 Zatrzymywanie systemu Order Management..."
 # Zatrzymanie i usunięcie kontenerów
 print_info "📦 Zatrzymywanie kontenerów..."
 
-containers=("postgres-orders" "postgres-auth" "postgres-raports" "nginx-gateway")
+containers=("postgres-orders" "postgres-auth" "postgres-raports" "rabbitmq" "nginx-gateway")
 
 for container in "${containers[@]}"; do
     if podman ps -a --format "{{.Names}}" | grep -q "^${container}$"; then

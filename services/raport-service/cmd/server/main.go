@@ -41,7 +41,7 @@ func main() {
 	// Health check endpoint (bez autoryzacji)
 	router.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte("Raport Service is running"))
+		w.Write([]byte("Raport Service działa"))
 	}).Methods("GET")
 
 	// Uruchomienie cron job (co 5 minut dla testów)

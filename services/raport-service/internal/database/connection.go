@@ -52,10 +52,10 @@ func connectToOrdersDB() (*sql.DB, error) {
 
 func connectToRaportsDB() (*sql.DB, error) {
 	host := getEnv("RAPORTS_DB_HOST", "localhost")
-	port := getEnv("RAPORTS_DB_PORT", "5432")
+	port := getEnv("RAPORTS_DB_PORT", "5434")
 	user := getEnv("RAPORTS_DB_USER", "postgres")
 	password := getEnv("RAPORTS_DB_PASSWORD", "password123")
-	dbname := getEnv("RAPORTS_DB_NAME", "raports_management")
+	dbname := getEnv("RAPORTS_DB_NAME", "reports_management")
 
 	psqlInfo := fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=%s sslmode=disable",
 		host, port, user, password, dbname)

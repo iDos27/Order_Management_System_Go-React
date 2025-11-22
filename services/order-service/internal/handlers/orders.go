@@ -3,21 +3,24 @@ package handlers
 import (
 	"net/http"
 	"strconv"
+	"time"
 
 	"github.com/iDos27/order-management/order-service/internal/database"
 	"github.com/iDos27/order-management/order-service/internal/models"
+	"github.com/iDos27/order-management/order-service/internal/publisher"
 	"github.com/iDos27/order-management/order-service/internal/websocket"
 
 	"github.com/gin-gonic/gin"
 )
 
 type OrderHandler struct {
-	db  *database.DB
-	hub *websocket.Hub
+	db        *database.DB
+	hub       *websocket.Hub
+	publisher *publisher.Publisher
 }
 
-func NewOrderHandler(db *database.DB, hub *websocket.Hub) *OrderHandler {
-	return &OrderHandler{db: db, hub: hub}
+func NewOrderHandler(db *database.DB, hub *websocket.Hub, pub *publisher.Publisher) *OrderHandler {
+	return &OrderHandler{db: db, hub: hub, publisher: pub}
 }
 
 // GET /api/orders - Lista wszystkich zamówień (admin)
@@ -99,6 +102,21 @@ func (h *OrderHandler) CreateOrder(c *gin.Context) {
 	// WebSocket powiadomienie o nowym zamówieniu
 	h.hub.BroadcastOrderUpdate(order.ID, string(order.Status), "system")
 
+	// RabbitMQ powiadomienie
+	if h.publisher != nil {
+		notification := publisher.OrderNotification{
+			OrderID:      order.ID,
+			CustomerName: order.CustomerName,
+			Status:       string(order.Status),
+			TotalAmount:  order.TotalAmount,
+			Timestamp:    time.Now(),
+		}
+		if err := h.publisher.PublishOrderNotification(notification); err != nil {
+			// Logujemy błąd, ale nie przerywamy requestu
+			// (zamówienie zostało utworzone pomyślnie)
+		}
+	}
+
 	c.JSON(http.StatusCreated, order)
 }
 
@@ -148,6 +166,26 @@ func (h *OrderHandler) UpdateOrderStatus(c *gin.Context) {
 
 	// Powiadomienie przez WebSocket
 	h.hub.BroadcastOrderUpdate(id, statusUpdate.Status, "admin")
+
+	// RabbitMQ powiadomienie przy zmianie statusu
+	if h.publisher != nil {
+		// Pobieramy dane zamówienia do powiadomienia
+		var order models.Order
+		err = h.db.QueryRow(`
+			SELECT customer_name, total_amount FROM orders WHERE id = $1
+		`, id).Scan(&order.CustomerName, &order.TotalAmount)
+
+		if err == nil {
+			notification := publisher.OrderNotification{
+				OrderID:      id,
+				CustomerName: order.CustomerName,
+				Status:       statusUpdate.Status,
+				TotalAmount:  order.TotalAmount,
+				Timestamp:    time.Now(),
+			}
+			h.publisher.PublishOrderNotification(notification)
+		}
+	}
 
 	c.JSON(http.StatusOK, gin.H{
 		"message":    "Order status updated successfully",

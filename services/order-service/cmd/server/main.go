@@ -4,19 +4,20 @@ import (
 	"log"
 	"os"
 
-	"github.com/gin-contrib/cors"
-	"github.com/gin-gonic/gin"
-
 	"github.com/iDos27/order-management/order-service/internal/database"
 	"github.com/iDos27/order-management/order-service/internal/handlers"
+	"github.com/iDos27/order-management/order-service/internal/publisher"
 	"github.com/iDos27/order-management/order-service/internal/websocket"
+
+	"github.com/gin-contrib/cors"
+	"github.com/gin-gonic/gin"
 )
 
 func main() {
 	// Połączenie z bazą
 	db, err := database.NewConnection()
 	if err != nil {
-		log.Fatal("Failed to connect to database:", err)
+		log.Fatal("Błąd połączenia z bazą danych:", err)
 	}
 	defer db.Close()
 
@@ -24,8 +25,21 @@ func main() {
 	hub := websocket.NewHub()
 	go hub.Run() // Uruchamiamy hub w goroutine
 
+	// Inicjalizacja RabbitMQ publisher
+	rabbitMQURL := getEnv("RABBITMQ_URL", "amqp://guest:guest@localhost:5672/")
+	queueName := getEnv("RABBITMQ_QUEUE", "order_notifications")
+	pub, err := publisher.NewPublisher(rabbitMQURL, queueName)
+	if err != nil {
+		log.Printf("OSTRZEŻENIE: Nie można połączyć z RabbitMQ: %v", err)
+		log.Println("Serwis będzie działał bez powiadomień RabbitMQ")
+		pub = nil
+	}
+	if pub != nil {
+		defer pub.Close()
+	}
+
 	// Inicjalizacja handlers
-	orderHandler := handlers.NewOrderHandler(db, hub)
+	orderHandler := handlers.NewOrderHandler(db, hub, pub)
 
 	// Setup routera
 	router := gin.Default()
@@ -56,7 +70,7 @@ func main() {
 
 	// Uruchomienie serwera
 	port := getEnv("SERVER_PORT", "8080")
-	log.Printf("Server running on port %s", port)
+	log.Printf("Serwer uruchomiony na porcie %s", port)
 	router.Run(":" + port)
 }
 func getEnv(key, defaultValue string) string {

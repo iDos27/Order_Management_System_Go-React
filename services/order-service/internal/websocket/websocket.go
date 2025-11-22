@@ -55,12 +55,12 @@ func (h *Hub) Run() {
 		select {
 		case client := <-h.Register:
 			h.Clients[client] = true
-			log.Println("New client connected")
+			log.Println("Nowy klient połączony")
 		case client := <-h.Unregister:
 			if _, ok := h.Clients[client]; ok {
 				delete(h.Clients, client)
 				close(client.Send)
-				log.Println("Client disconnected")
+				log.Println("Klient rozłączony")
 			}
 		case message := <-h.Broadcast:
 			for client := range h.Clients {
@@ -88,7 +88,7 @@ func (h *Hub) BroadcastOrderUpdate(orderId int, newStatus, updatedBy string) {
 	case h.Broadcast <- message:
 		log.Printf("Broadcasting order update: %+v", message)
 	default:
-		log.Println("Cant send message, no clients connected")
+		log.Println("Nie można wysłać wiadomości, brak połączonych klientów")
 	}
 }
 
@@ -96,7 +96,7 @@ func HandleWebSocket(hub *Hub) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		conn, err := upgrader.Upgrade(c.Writer, c.Request, nil)
 		if err != nil {
-			log.Println("WebSocket upgrade error:", err)
+			log.Println("Błąd aktualizacji WebSocket:", err)
 			return
 		}
 

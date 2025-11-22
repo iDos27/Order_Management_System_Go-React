@@ -25,14 +25,14 @@ func NewConnection() (*DB, error) {
 
 	db, err := sql.Open("postgres", psqlInfo)
 	if err != nil {
-		return nil, fmt.Errorf("ERROR: unable to open to database: %v", err)
+		return nil, fmt.Errorf("BŁĄD: nie można otworzyć bazy danych: %v", err)
 	}
 
 	if err = db.Ping(); err != nil {
-		return nil, fmt.Errorf("ERROR: unable to connect to database: %v", err)
+		return nil, fmt.Errorf("BŁĄD: nie można połączyć się z bazą danych: %v", err)
 	}
 
-	log.Println("Successfully connected to the database")
+	log.Println("Pomyślnie połączono z bazą danych")
 	return &DB{db}, nil
 }
 

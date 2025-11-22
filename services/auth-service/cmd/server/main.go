@@ -38,16 +38,16 @@ func main() {
 
 	db, err := database.NewConnection()
 	if err != nil {
-		log.Fatalf("Failed to connect to database: %v", err)
+		log.Fatalf("Błąd połączenia z bazą danych: %v", err)
 	}
 	defer db.Close()
 
-	log.Println("Connected to the database")
+	log.Println("Połączono z bazą danych")
 
 	if err := db.CreateUsersTable(); err != nil {
-		log.Fatalf("Failed to create users table: %v", err)
+		log.Fatalf("Błąd tworzenia tabeli users: %v", err)
 	}
-	log.Println("Users table is ready")
+	log.Println("Tabela users jest gotowa")
 
 	authHandler := handlers.NewAuthHandler(db)
 	authMiddleware := middleware.NewAuthMiddleware(db)
@@ -115,6 +115,6 @@ func main() {
 	}
 
 	// Uruchomienie serwera
-	log.Printf("Starting Auth Service on port %s", port)
+	log.Printf("Uruchamianie Auth Service na porcie %s", port)
 	log.Fatal(router.Run(":" + port))
 }

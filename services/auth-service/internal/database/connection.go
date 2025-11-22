@@ -26,10 +26,10 @@ func NewConnection() (*DB, error) {
 
 	// Testowanie połączenia
 	if err := db.Ping(); err != nil {
-		return nil, fmt.Errorf("failed to connect to database: %w", err)
+		return nil, fmt.Errorf("błąd połączenia z bazą danych: %w", err)
 	}
 
-	log.Println("Connected to the database successfully")
+	log.Println("Pomyślnie połączono z bazą danych")
 	return &DB{db}, nil
 }
 
@@ -55,9 +55,9 @@ func (db *DB) CreateUsersTable() error {
 
 	_, err := db.Exec(query)
 	if err != nil {
-		return fmt.Errorf("failed to create users table: %w", err)
+		return fmt.Errorf("błąd tworzenia tabeli users: %w", err)
 	}
 
-	log.Println("Users table created successfully")
+	log.Println("Tabela users utworzona pomyślnie")
 	return nil
 }
