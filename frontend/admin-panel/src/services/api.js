@@ -1,7 +1,8 @@
 import axios from 'axios';
 
-export const API_BASE_URL = 'http://localhost/api';
-export const AUTH_BASE_URL = 'http://localhost/api/v1';
+// Ścieżki dla NGINX proxy
+export const API_BASE_URL = '/api/orders';
+export const AUTH_BASE_URL = '/api/auth';
 
 const axiosInstance = axios.create({
     baseURL: API_BASE_URL,
@@ -11,11 +12,11 @@ const axiosInstance = axios.create({
 });
 
 export const ordersAPI = {
-    getAllOrders: () => axiosInstance.get('/orders'),
-    getOrderById: (id) => axiosInstance.get(`/orders/${id}`),
-    createOrder: (orderData) => axiosInstance.post('/orders', orderData),
-    updateOrder: (id, orderData) => axiosInstance.put(`/orders/${id}`, orderData),
-    updateOrderStatus: (id, status) => axiosInstance.patch(`/orders/${id}/status`, { status }),
+    getAllOrders: () => axiosInstance.get(''),
+    getOrderById: (id) => axiosInstance.get(`/${id}`),
+    createOrder: (orderData) => axiosInstance.post('', orderData),
+    updateOrder: (id, orderData) => axiosInstance.put(`/${id}`, orderData),
+    updateOrderStatus: (id, status) => axiosInstance.patch(`/${id}/status`, { status }),
 };
 
 // API object z funkcjami dla AuthContext
@@ -54,7 +55,7 @@ const api = {
 
     getOrders: async (token) => {
         try {
-            const response = await axios.get(`${API_BASE_URL}/orders`, {
+            const response = await axios.get(`${API_BASE_URL}`, {
                 headers: {
                     'Authorization': `Bearer ${token}`,
                     'Content-Type': 'application/json',
@@ -71,7 +72,7 @@ const api = {
 
     createOrder: async (orderData, token) => {
         try {
-            const response = await axios.post(`${API_BASE_URL}/orders`, orderData, {
+            const response = await axios.post(`${API_BASE_URL}`, orderData, {
                 headers: {
                     'Authorization': `Bearer ${token}`,
                     'Content-Type': 'application/json',
@@ -88,7 +89,7 @@ const api = {
 
     updateOrderStatus: async (orderId, status, token) => {
         try {
-            const response = await axios.patch(`${API_BASE_URL}/orders/${orderId}/status`, 
+            const response = await axios.patch(`${API_BASE_URL}/${orderId}/status`, 
                 { status }, 
                 {
                     headers: {

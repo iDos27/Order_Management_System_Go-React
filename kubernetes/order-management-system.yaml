@@ -1,0 +1,679 @@
+# Order Management System - Kubernetes/Podman Deployment
+# Autorzy: Piotr
+# Data: 2025-11-23
+#
+# Uruchomienie:
+#   podman play kube kubernetes/order-management-system.yaml
+#
+# Zatrzymanie:
+#   podman play kube --down kubernetes/order-management-system.yaml
+#
+# Replace (restart):
+#   podman play kube --replace kubernetes/order-management-system.yaml
+
+---
+# ==========================================
+# PostgreSQL - Orders Database
+# ==========================================
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: postgres-orders-pvc
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 2Gi
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: postgres-orders
+  labels:
+    app: postgres-orders
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: postgres-orders
+  template:
+    metadata:
+      labels:
+        app: postgres-orders
+    spec:
+      containers:
+      - name: postgres
+        image: docker.io/library/postgres:16-alpine
+        env:
+        - name: POSTGRES_DB
+          value: orders_management
+        - name: POSTGRES_USER
+          value: postgres
+        - name: POSTGRES_PASSWORD
+          value: password
+        - name: PGDATA
+          value: /var/lib/postgresql/data/pgdata
+        ports:
+        - containerPort: 5432
+          name: postgres
+        volumeMounts:
+        - name: postgres-data
+          mountPath: /var/lib/postgresql/data
+      volumes:
+      - name: postgres-data
+        persistentVolumeClaim:
+          claimName: postgres-orders-pvc
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres-orders
+spec:
+  selector:
+    app: postgres-orders
+  ports:
+  - port: 5432
+    targetPort: 5432
+  type: ClusterIP
+
+---
+# ==========================================
+# PostgreSQL - Auth Database
+# ==========================================
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: postgres-auth-pvc
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: postgres-auth
+  labels:
+    app: postgres-auth
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: postgres-auth
+  template:
+    metadata:
+      labels:
+        app: postgres-auth
+    spec:
+      containers:
+      - name: postgres
+        image: docker.io/library/postgres:16-alpine
+        env:
+        - name: POSTGRES_DB
+          value: auth_service
+        - name: POSTGRES_USER
+          value: postgres
+        - name: POSTGRES_PASSWORD
+          value: password
+        - name: PGDATA
+          value: /var/lib/postgresql/data/pgdata
+        ports:
+        - containerPort: 5432
+          name: postgres
+        volumeMounts:
+        - name: postgres-data
+          mountPath: /var/lib/postgresql/data
+      volumes:
+      - name: postgres-data
+        persistentVolumeClaim:
+          claimName: postgres-auth-pvc
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres-auth
+spec:
+  selector:
+    app: postgres-auth
+  ports:
+  - port: 5432
+    targetPort: 5432
+  type: ClusterIP
+
+---
+# ==========================================
+# PostgreSQL - Reports Database
+# ==========================================
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: postgres-reports-pvc
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: postgres-reports
+  labels:
+    app: postgres-reports
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: postgres-reports
+  template:
+    metadata:
+      labels:
+        app: postgres-reports
+    spec:
+      containers:
+      - name: postgres
+        image: docker.io/library/postgres:16-alpine
+        env:
+        - name: POSTGRES_DB
+          value: reports_management
+        - name: POSTGRES_USER
+          value: postgres
+        - name: POSTGRES_PASSWORD
+          value: password
+        - name: PGDATA
+          value: /var/lib/postgresql/data/pgdata
+        ports:
+        - containerPort: 5432
+          name: postgres
+        volumeMounts:
+        - name: postgres-data
+          mountPath: /var/lib/postgresql/data
+      volumes:
+      - name: postgres-data
+        persistentVolumeClaim:
+          claimName: postgres-reports-pvc
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres-reports
+spec:
+  selector:
+    app: postgres-reports
+  ports:
+  - port: 5432
+    targetPort: 5432
+  type: ClusterIP
+
+---
+# ==========================================
+# RabbitMQ Message Broker
+# ==========================================
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: rabbitmq-pvc
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: rabbitmq
+  labels:
+    app: rabbitmq
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: rabbitmq
+  template:
+    metadata:
+      labels:
+        app: rabbitmq
+    spec:
+      containers:
+      - name: rabbitmq
+        image: docker.io/library/rabbitmq:3-management-alpine
+        ports:
+        - containerPort: 5672
+          name: amqp
+        - containerPort: 15672
+          name: management
+        volumeMounts:
+        - name: rabbitmq-data
+          mountPath: /var/lib/rabbitmq
+      volumes:
+      - name: rabbitmq-data
+        persistentVolumeClaim:
+          claimName: rabbitmq-pvc
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: rabbitmq
+spec:
+  selector:
+    app: rabbitmq
+  ports:
+  - port: 5672
+    targetPort: 5672
+    name: amqp
+  - port: 15672
+    targetPort: 15672
+    name: management
+    nodePort: 30672
+  type: NodePort
+
+---
+# ==========================================
+# Auth Service
+# ==========================================
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: auth-service
+  labels:
+    app: auth-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: auth-service
+  template:
+    metadata:
+      labels:
+        app: auth-service
+    spec:
+      containers:
+      - name: auth-service
+        image: localhost/auth-service:latest
+        imagePullPolicy: Never
+        env:
+        - name: DATABASE_URL
+          value: "postgres://postgres:password@postgres-auth:5432/auth_service?sslmode=disable"
+        - name: JWT_SECRET
+          value: "production-secret-change-me"
+        - name: PORT
+          value: "8081"
+        ports:
+        - containerPort: 8081
+          name: http
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8081
+          initialDelaySeconds: 10
+          periodSeconds: 30
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 8081
+          initialDelaySeconds: 5
+          periodSeconds: 10
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: auth-service
+spec:
+  selector:
+    app: auth-service
+  ports:
+  - port: 8081
+    targetPort: 8081
+    name: http
+  type: ClusterIP
+
+---
+# ==========================================
+# Order Service
+# ==========================================
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: order-service
+  labels:
+    app: order-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: order-service
+  template:
+    metadata:
+      labels:
+        app: order-service
+    spec:
+      containers:
+      - name: order-service
+        image: localhost/order-service:latest
+        imagePullPolicy: Never
+        env:
+        - name: DATABASE_URL
+          value: "postgres://postgres:password@postgres-orders:5432/orders_management?sslmode=disable"
+        - name: RABBITMQ_URL
+          value: "amqp://guest:guest@rabbitmq:5672/"
+        - name: RABBITMQ_QUEUE
+          value: "order_notifications"
+        - name: SERVER_PORT
+          value: "8080"
+        ports:
+        - containerPort: 8080
+          name: http
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8080
+          initialDelaySeconds: 10
+          periodSeconds: 30
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 8080
+          initialDelaySeconds: 5
+          periodSeconds: 10
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: order-service
+spec:
+  selector:
+    app: order-service
+  ports:
+  - port: 8080
+    targetPort: 8080
+    name: http
+  type: ClusterIP
+
+---
+# ==========================================
+# Raport Service
+# ==========================================
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: reports-files-pvc
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 5Gi
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: raport-service
+  labels:
+    app: raport-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: raport-service
+  template:
+    metadata:
+      labels:
+        app: raport-service
+    spec:
+      containers:
+      - name: raport-service
+        image: localhost/raport-service:latest
+        imagePullPolicy: Never
+        env:
+        - name: ORDERS_DB_HOST
+          value: "postgres-orders"
+        - name: ORDERS_DB_PORT
+          value: "5432"
+        - name: ORDERS_DB_NAME
+          value: "orders_management"
+        - name: ORDERS_DB_USER
+          value: "postgres"
+        - name: ORDERS_DB_PASSWORD
+          value: "password"
+        - name: RAPORTS_DB_HOST
+          value: "postgres-reports"
+        - name: RAPORTS_DB_PORT
+          value: "5432"
+        - name: RAPORTS_DB_NAME
+          value: "reports_management"
+        - name: RAPORTS_DB_USER
+          value: "postgres"
+        - name: RAPORTS_DB_PASSWORD
+          value: "password"
+        - name: PORT
+          value: "8083"
+        ports:
+        - containerPort: 8083
+          name: http
+        volumeMounts:
+        - name: reports-storage
+          mountPath: /app/reports
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8083
+          initialDelaySeconds: 10
+          periodSeconds: 30
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 8083
+          initialDelaySeconds: 5
+          periodSeconds: 10
+      volumes:
+      - name: reports-storage
+        persistentVolumeClaim:
+          claimName: reports-files-pvc
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: raport-service
+spec:
+  selector:
+    app: raport-service
+  ports:
+  - port: 8083
+    targetPort: 8083
+    name: http
+  type: ClusterIP
+
+---
+# ==========================================
+# Frontend (React/Vite with Nginx)
+# ==========================================
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: frontend
+  labels:
+    app: frontend
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: frontend
+  template:
+    metadata:
+      labels:
+        app: frontend
+    spec:
+      containers:
+      - name: frontend
+        image: localhost/frontend:latest
+        imagePullPolicy: Never
+        ports:
+        - containerPort: 80
+          name: http
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: frontend
+spec:
+  selector:
+    app: frontend
+  ports:
+  - port: 80
+    targetPort: 80
+    name: http
+  type: ClusterIP
+
+---
+# ==========================================
+# Nginx Reverse Proxy
+# ==========================================
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: nginx-config
+data:
+  nginx.conf: |
+    events {
+        worker_connections 1024;
+    }
+
+    http {
+        upstream auth_service {
+            server auth-service:8081;
+        }
+
+        upstream order_service {
+            server order-service:8080;
+        }
+
+        upstream raport_service {
+            server raport-service:8083;
+        }
+
+        upstream frontend {
+            server frontend:80;
+        }
+
+        server {
+            listen 80;
+            server_name localhost;
+
+            # Frontend
+            location / {
+                proxy_pass http://frontend;
+                proxy_http_version 1.1;
+                proxy_set_header Upgrade $http_upgrade;
+                proxy_set_header Connection 'upgrade';
+                proxy_set_header Host $host;
+                proxy_cache_bypass $http_upgrade;
+            }
+
+            # Auth endpoints
+            location /api/v1/ {
+                proxy_pass http://auth_service/api/v1/;
+                proxy_set_header Host $host;
+                proxy_set_header X-Real-IP $remote_addr;
+            }
+
+            # Protected orders endpoints
+            location /api/orders {
+                auth_request /validate;
+                proxy_pass http://order_service/api/orders;
+                proxy_set_header Host $host;
+                proxy_set_header X-Real-IP $remote_addr;
+            }
+
+            # Protected reports endpoints
+            location /api/reports {
+                auth_request /validate;
+                proxy_pass http://raport_service/api/reports;
+                proxy_set_header Host $host;
+                proxy_set_header X-Real-IP $remote_addr;
+            }
+
+            # WebSocket
+            location /ws {
+                proxy_pass http://order_service;
+                proxy_http_version 1.1;
+                proxy_set_header Upgrade $http_upgrade;
+                proxy_set_header Connection "upgrade";
+            }
+
+            # Walidacja
+            location = /validate {
+                internal;
+                proxy_pass http://auth_service/api/v1/validate;
+                proxy_pass_request_body off;
+                proxy_set_header Content-Length "";
+                proxy_set_header X-Original-URI $request_uri;
+                proxy_set_header Authorization $http_authorization;
+            }
+        }
+    }
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nginx
+  labels:
+    app: nginx
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: nginx
+  template:
+    metadata:
+      labels:
+        app: nginx
+    spec:
+      containers:
+      - name: nginx
+        image: docker.io/library/nginx:alpine
+        ports:
+        - containerPort: 80
+          name: http
+        volumeMounts:
+        - name: nginx-config
+          mountPath: /etc/nginx/nginx.conf
+          subPath: nginx.conf
+      volumes:
+      - name: nginx-config
+        configMap:
+          name: nginx-config
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: nginx
+spec:
+  selector:
+    app: nginx
+  ports:
+  - port: 80
+    targetPort: 80
+    nodePort: 30080
+    name: http
+  type: NodePort

@@ -1,0 +1,314 @@
+services:
+  # ==========================================
+  # PostgreSQL Databases
+  # ==========================================
+  
+  postgres-orders:
+    image: postgres:16-alpine
+    container_name: postgres-orders
+    environment:
+      POSTGRES_USER: orderuser
+      POSTGRES_PASSWORD: orderpass
+      POSTGRES_DB: ordersdb
+    volumes:
+      - postgres-orders-data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U orderuser -d ordersdb"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - app-network
+
+  postgres-auth:
+    image: postgres:16-alpine
+    container_name: postgres-auth
+    environment:
+      POSTGRES_USER: authuser
+      POSTGRES_PASSWORD: authpass
+      POSTGRES_DB: authdb
+    volumes:
+      - postgres-auth-data:/var/lib/postgresql/data
+    ports:
+      - "5433:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U authuser -d authdb"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - app-network
+
+  # Database migrations for auth
+  auth-migrations:
+    image: postgres:16-alpine
+    container_name: auth-migrations
+    environment:
+      PGPASSWORD: authpass
+    volumes:
+      - ./services/auth-service/migrations:/migrations:z # :z na końcu to etykieta SELinux
+    command:
+      - sh
+      - -c
+      - |
+        echo 'Waiting for postgres-auth to be ready...';
+        until pg_isready -h postgres-auth -U authuser -d authdb; do sleep 2; done;
+        echo 'Running auth migrations...';
+        cat /migrations/create_tables.sql | psql -h postgres-auth -U authuser -d authdb;
+        echo 'Auth migrations completed!';
+    depends_on:
+      postgres-auth:
+        condition: service_healthy
+    networks:
+      - app-network
+
+  postgres-reports:
+    image: postgres:16-alpine
+    container_name: postgres-reports
+    environment:
+      POSTGRES_USER: reportuser
+      POSTGRES_PASSWORD: reportpass
+      POSTGRES_DB: reportsdb
+    volumes:
+      - postgres-reports-data:/var/lib/postgresql/data
+    ports:
+      - "5434:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U reportuser -d reportsdb"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - app-network
+
+  # Database migrations for reports
+  reports-migrations:
+    image: postgres:16-alpine
+    container_name: reports-migrations
+    environment:
+      PGPASSWORD: reportpass
+    volumes:
+      - ./services/raport-service/migrations:/migrations:z
+    command:
+      - sh
+      - -c
+      - |
+        echo 'Waiting for postgres-reports to be ready...';
+        until pg_isready -h postgres-reports -U reportuser -d reportsdb; do sleep 2; done;
+        echo 'Running reports migrations...';
+        cat /migrations/create_tables.sql | psql -h postgres-reports -U reportuser -d reportsdb;
+        echo 'Reports migrations completed!';
+    depends_on:
+      postgres-reports:
+        condition: service_healthy
+    networks:
+      - app-network
+
+  # ==========================================
+  # RabbitMQ
+  # ==========================================
+  
+  rabbitmq:
+    image: rabbitmq:3-management-alpine
+    container_name: rabbitmq
+    environment:
+      RABBITMQ_DEFAULT_USER: guest
+      RABBITMQ_DEFAULT_PASS: guest
+    volumes:
+      - rabbitmq-data:/var/lib/rabbitmq
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - app-network
+
+  # ==========================================
+  # Microservices
+  # ==========================================
+  
+  auth-service:
+    image: auth-service:latest
+    container_name: auth-service
+    environment:
+      DATABASE_URL: "postgres://authuser:authpass@postgres-auth:5432/authdb?sslmode=disable"
+      JWT_SECRET: "your-super-secret-jwt-key-change-in-production"
+      PORT: "8081"
+    ports:
+      - "8081:8081"
+    depends_on:
+      postgres-auth:
+        condition: service_healthy
+      auth-migrations:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8081/health"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    restart: unless-stopped
+    networks:
+      - app-network
+
+  # Create default admin user
+  create-admin:
+    image: curlimages/curl:latest
+    container_name: create-admin
+    command:
+      - sh
+      - -c
+      - |
+        echo 'Waiting for auth-service...';
+        sleep 5;
+        echo 'Creating admin user...';
+        curl -X POST http://auth-service:8081/api/v1/register \
+          -H "Content-Type: application/json" \
+          -d '{"email":"admin@test.com","password":"admin123","role":"admin"}' || true;
+        echo 'Admin user creation attempted';
+    depends_on:
+      auth-service:
+        condition: service_healthy
+    networks:
+      - app-network
+
+  # Database migrations for orders
+  orders-migrations:
+    image: postgres:16-alpine
+    container_name: orders-migrations
+    environment:
+      PGPASSWORD: orderpass
+    volumes:
+      - ./services/order-service/migrations:/migrations:z
+    command:
+      - sh
+      - -c
+      - |
+        echo 'Waiting for postgres-orders to be ready...';
+        until pg_isready -h postgres-orders -U orderuser -d ordersdb; do sleep 2; done;
+        echo 'Running orders migrations...';
+        cat /migrations/create_tables.sql | psql -h postgres-orders -U orderuser -d ordersdb;
+        echo 'Orders migrations completed!';
+    depends_on:
+      postgres-orders:
+        condition: service_healthy
+    networks:
+      - app-network
+
+  order-service:
+    image: order-service:latest
+    container_name: order-service
+    environment:
+      DB_HOST: "postgres-orders"
+      DB_PORT: "5432"
+      DB_USER: "orderuser"
+      DB_PASSWORD: "orderpass"
+      DB_NAME: "ordersdb"
+      RABBITMQ_URL: "amqp://guest:guest@rabbitmq:5672/"
+      PORT: "8080"
+    ports:
+      - "8080:8080"
+    depends_on:
+      postgres-orders:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      orders-migrations:
+        condition: service_completed_successfully
+    restart: unless-stopped
+    networks:
+      - app-network
+
+  raport-service:
+    image: raport-service:latest
+    container_name: raport-service
+    environment:
+      ORDERS_DB_HOST: "postgres-orders"
+      ORDERS_DB_PORT: "5432"
+      ORDERS_DB_USER: "orderuser"
+      ORDERS_DB_PASSWORD: "orderpass"
+      ORDERS_DB_NAME: "ordersdb"
+      RAPORTS_DB_HOST: "postgres-reports"
+      RAPORTS_DB_PORT: "5432"
+      RAPORTS_DB_USER: "reportuser"
+      RAPORTS_DB_PASSWORD: "reportpass"
+      RAPORTS_DB_NAME: "reportsdb"
+      PORT: "8083"
+    volumes:
+      - reports-files:/app/reports
+    ports:
+      - "8083:8083"
+    depends_on:
+      postgres-orders:
+        condition: service_healthy
+      postgres-reports:
+        condition: service_healthy
+      orders-migrations:
+        condition: service_completed_successfully
+      reports-migrations:
+        condition: service_completed_successfully
+    restart: unless-stopped
+    networks:
+      - app-network
+
+  # ==========================================
+  # Frontend
+  # ==========================================
+  
+  frontend:
+    image: frontend:latest
+    container_name: frontend
+    ports:
+      - "8090:80"
+    restart: unless-stopped
+    networks:
+      - app-network
+
+  # ==========================================
+  # Nginx Reverse Proxy
+  # ==========================================
+  
+  nginx:
+    image: nginx:alpine
+    container_name: nginx-proxy
+    ports:
+      - "30080:80"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:Z
+    depends_on:
+      - auth-service
+      - order-service
+      - raport-service
+      - frontend
+    restart: unless-stopped
+    networks:
+      - app-network
+
+# ==========================================
+# Volumes
+# ==========================================
+
+volumes:
+  postgres-orders-data:
+    name: postgres-orders-data
+  postgres-auth-data:
+    name: postgres-auth-data
+  postgres-reports-data:
+    name: postgres-reports-data
+  rabbitmq-data:
+    name: rabbitmq-data
+  reports-files:
+    name: reports-files
+
+# ==========================================
+# Networks
+# ==========================================
+
+networks:
+  app-network:
+    driver: bridge

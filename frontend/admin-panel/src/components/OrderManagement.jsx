@@ -13,7 +13,7 @@ const OrderManagement = () => {
   // Pobierz token i helper z AuthContext
   const { token, isAuthenticated, getAuthHeaders } = useAuth()
 
-  const { lastMessage } = useWebSocket('ws://localhost/ws')
+  const { lastMessage } = useWebSocket('ws://localhost:30080/ws')
 
   useEffect(() => { 
     fetchOrders()

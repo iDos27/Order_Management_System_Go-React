@@ -1,6 +1,6 @@
 module github.com/iDos27/order-management/auth-service
 
-go 1.24.7
+go 1.25.3
 
 require (
 	github.com/gin-gonic/gin v1.11.0
