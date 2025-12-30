@@ -58,7 +58,7 @@ func (n *Notifier) handleSignals(c chan *dbus.Signal) {
 				actionKey, ok := v.Body[1].(string)
 				if ok && actionKey == "default" {
 					log.Println("Kliknięto w powiadomienie! Otwieranie localhost...")
-					openBrowser("http://localhost")
+					openBrowser("http://localhost:30080")
 				}
 			}
 		}

@@ -1,10 +1,10 @@
 services:
   # ==========================================
-  # PostgreSQL Databases
+  # PostgreSQL Databases + Migrations
   # ==========================================
   
   postgres-orders:
-    image: postgres:16-alpine
+    image: postgres:17-alpine
     container_name: postgres-orders
     environment:
       POSTGRES_USER: orderuser
@@ -22,8 +22,30 @@ services:
     networks:
       - app-network
 
+  orders-migrations:
+    image: postgres:17-alpine
+    container_name: orders-migrations
+    environment:
+      PGPASSWORD: orderpass
+    volumes:
+      - ./services/order-service/migrations:/migrations:z
+    command:
+      - sh
+      - -c
+      - |
+        echo 'Waiting for postgres-orders to be ready...';
+        until pg_isready -h postgres-orders -U orderuser -d ordersdb; do sleep 2; done;
+        echo 'Running orders migrations...';
+        cat /migrations/create_tables.sql | psql -h postgres-orders -U orderuser -d ordersdb;
+        echo 'Orders migrations completed!';
+    depends_on:
+      postgres-orders:
+        condition: service_healthy
+    networks:
+      - app-network
+
   postgres-auth:
-    image: postgres:16-alpine
+    image: postgres:17-alpine
     container_name: postgres-auth
     environment:
       POSTGRES_USER: authuser
@@ -41,14 +63,13 @@ services:
     networks:
       - app-network
 
-  # Database migrations for auth
   auth-migrations:
-    image: postgres:16-alpine
+    image: postgres:17-alpine
     container_name: auth-migrations
     environment:
       PGPASSWORD: authpass
     volumes:
-      - ./services/auth-service/migrations:/migrations:z # :z na końcu to etykieta SELinux
+      - ./services/auth-service/migrations:/migrations:z
     command:
       - sh
       - -c
@@ -65,7 +86,7 @@ services:
       - app-network
 
   postgres-reports:
-    image: postgres:16-alpine
+    image: postgres:17-alpine
     container_name: postgres-reports
     environment:
       POSTGRES_USER: reportuser
@@ -83,9 +104,8 @@ services:
     networks:
       - app-network
 
-  # Database migrations for reports
   reports-migrations:
-    image: postgres:16-alpine
+    image: postgres:17-alpine
     container_name: reports-migrations
     environment:
       PGPASSWORD: reportpass
@@ -107,30 +127,7 @@ services:
       - app-network
 
   # ==========================================
-  # RabbitMQ
-  # ==========================================
-  
-  rabbitmq:
-    image: rabbitmq:3-management-alpine
-    container_name: rabbitmq
-    environment:
-      RABBITMQ_DEFAULT_USER: guest
-      RABBITMQ_DEFAULT_PASS: guest
-    volumes:
-      - rabbitmq-data:/var/lib/rabbitmq
-    ports:
-      - "5672:5672"
-      - "15672:15672"
-    healthcheck:
-      test: ["CMD", "rabbitmq-diagnostics", "ping"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-    networks:
-      - app-network
-
-  # ==========================================
-  # Microservices
+  # Backend Services
   # ==========================================
   
   auth-service:
@@ -156,7 +153,6 @@ services:
     networks:
       - app-network
 
-  # Create default admin user
   create-admin:
     image: curlimages/curl:latest
     container_name: create-admin
@@ -173,29 +169,6 @@ services:
         echo 'Admin user creation attempted';
     depends_on:
       auth-service:
-        condition: service_healthy
-    networks:
-      - app-network
-
-  # Database migrations for orders
-  orders-migrations:
-    image: postgres:16-alpine
-    container_name: orders-migrations
-    environment:
-      PGPASSWORD: orderpass
-    volumes:
-      - ./services/order-service/migrations:/migrations:z
-    command:
-      - sh
-      - -c
-      - |
-        echo 'Waiting for postgres-orders to be ready...';
-        until pg_isready -h postgres-orders -U orderuser -d ordersdb; do sleep 2; done;
-        echo 'Running orders migrations...';
-        cat /migrations/create_tables.sql | psql -h postgres-orders -U orderuser -d ordersdb;
-        echo 'Orders migrations completed!';
-    depends_on:
-      postgres-orders:
         condition: service_healthy
     networks:
       - app-network
@@ -266,6 +239,29 @@ services:
     ports:
       - "8090:80"
     restart: unless-stopped
+    networks:
+      - app-network
+
+  # ==========================================
+  # RabbitMQ
+  # ==========================================
+  
+  rabbitmq:
+    image: rabbitmq:3-management-alpine
+    container_name: rabbitmq
+    environment:
+      RABBITMQ_DEFAULT_USER: guest
+      RABBITMQ_DEFAULT_PASS: guest
+    volumes:
+      - rabbitmq-data:/var/lib/rabbitmq
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
     networks:
       - app-network
 

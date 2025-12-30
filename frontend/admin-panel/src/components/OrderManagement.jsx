@@ -2,6 +2,7 @@ import { useState, useEffect } from "react"
 import { useAuth } from "../context/AuthContext"
 import OrderCard from "./OrderCard"
 import useWebSocket from "../hooks/useWebSocket"
+import NewOrderForm from "./NewOrderForm"
 
 const OrderManagement = () => {
   const [orders, setOrders] = useState([])
@@ -9,11 +10,12 @@ const OrderManagement = () => {
   const [error, setError] = useState(null)
   const [currentView, setCurrentView] = useState('list')
   const [selectedOrder, setSelectedOrder] = useState(null)
+  const [showNewOrderForm, setShowNewOrderForm] = useState(false)
 
   // Pobierz token i helper z AuthContext
   const { token, isAuthenticated, getAuthHeaders } = useAuth()
 
-  const { lastMessage } = useWebSocket('ws://localhost:30080/ws')
+  const { lastMessage } = useWebSocket(`ws://${window.location.host}/ws`)
 
   useEffect(() => { 
     fetchOrders()
@@ -137,7 +139,15 @@ const OrderManagement = () => {
 
     return (
       <div className="order-management">
-        <h2>Zarządzanie Zamówieniami</h2>
+        <div className="management-header">
+          <h2>Zarządzanie Zamówieniami</h2>
+          <button 
+            className="add-order-button" 
+            onClick={() => setShowNewOrderForm(true)}
+          >
+            + Dodaj zamówienie
+          </button>
+        </div>
 
         <div className="kanban-board">
           {Object.entries(statusConfig).map(([status, config]) => (
@@ -298,7 +308,16 @@ const OrderManagement = () => {
   if (loading) return <div className="loading">Ładowanie zamówień...</div>
   if (error) return <div className="error">{error}</div>
 
-  return currentView === 'list' ? renderOrdersList() : renderOrderDetails()
+  return (
+    <>
+      {currentView === 'list' ? renderOrdersList() : renderOrderDetails()}
+      {showNewOrderForm && (
+        <NewOrderForm
+          onClose={() => setShowNewOrderForm(false)}
+        />
+      )}
+    </>
+  )
 }
 
 export default OrderManagement
